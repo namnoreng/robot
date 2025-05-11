@@ -2,8 +2,9 @@ import cv2 as cv
 import numpy as np
 import serial
 import time
+import find_destination
 
-mode_state = {"default" : 0, "finding_path" : 1}  # 모드 종류 설정
+mode_state = {"default" : 0, "find_empty_place" : 1, "find_car" : 2}  # 모드 종류 설정
 
 mode = mode_state["default"]  # 초기 모드 설정
 
@@ -22,32 +23,52 @@ except serial.SerialException as e:
 marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
 param_markers = cv.aruco.DetectorParameters()
 
-# 카메라 초기화
-cap_front = cv.VideoCapture(0)  # 전방 카메라
-cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-cap_front.set(cv.CAP_PROP_FPS, 30)
+# # 카메라 초기화
+# cap_front = cv.VideoCapture(0)  # 전방 카메라
+# cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+# cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+# cap_front.set(cv.CAP_PROP_FPS, 30)
 
-cap_back = cv.VideoCapture(1)  # 후방 카메라
-cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-cap_back.set(cv.CAP_PROP_FPS, 30)
+# cap_back = cv.VideoCapture(1)  # 후방 카메라
+# cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+# cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+# cap_back.set(cv.CAP_PROP_FPS, 30)
 
-# 카메라 연결 확인
-while not cap_front.isOpened():
-    print("waiting for front camera")
-    time.sleep(1)
+# # 카메라 연결 확인
+# while not cap_front.isOpened():
+#     print("waiting for front camera")
+#     time.sleep(1)
 
-print("front camera is opened")
+# print("front camera is opened")
 
-while not cap_back.isOpened():
-    print("waiting for back camera")
-    time.sleep(1)
+# while not cap_back.isOpened():
+#     print("waiting for back camera")
+#     time.sleep(1)1
 
-print("back camera is opened")
+# print("back camera is opened")
 
-# 커밋 잘 되는지 확인용 메세지
 
+
+while True:
+    mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기): "))
+    if mode not in mode_state.values():
+        print("잘못된 모드입니다. 다시 선택하세요.")
+        continue
+    # 모드에 따라 동작 변경
+    if mode == mode_state["find_empty_place"]:
+        # 빈 공간 찾기 모드
+        find_destination.DFS(find_destination.parking_lot)  # 빈 공간 찾기 알고리즘 호출
+
+    elif mode == mode_state["find_car"]:
+        # 차량 찾기 모드
+        car_number = input("찾고자 하는 차량 번호를 입력하세요: ")
+        find_destination.find_car(find_destination.parking_lot, car_number)
+        
+    key = cv.waitKey(1) & 0xFF
+    if key == 27:
+        break
+    elif key == ord('m'):
+        mode = (mode + 1) % len(mode_state)  # 모드 변경
 
 
 
