@@ -46,6 +46,8 @@ while not cap_back.isOpened():
 
 print("back camera is opened")
 
+# 커밋 잘 되는지 확인용 메세지
+
 
 
 
