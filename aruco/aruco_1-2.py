@@ -19,7 +19,7 @@ objp[:, :2] = np.mgrid[0 : CHECKERBOARD[0], 0 : CHECKERBOARD[1]].T.reshape(-1, 2
 objp *= 15  # 각 체스보드 셀의 크기가 15mm 
 
 # 체스보드 이미지들을 읽어옵니다.
-image_paths = glob.glob(r"Image/6x5/*.jpg")  # 이미지 파일 경로를 설정합니다.
+image_paths = glob.glob(r"aruco/image_back/*.jpg")  # 이미지 파일 경로를 설정합니다.
 
 print(f"Found {len(image_paths)} images")
 
@@ -64,5 +64,5 @@ print("Camera matrix : \n", camera_matrix)
 print("Distortion coefficients : \n", dist_coeffs)
 
 # 보정된 행렬과 왜곡 계수를 저장합니다.
-np.save(r"Image/camera_matrix.npy", camera_matrix)
-np.save(r"Image/dist_coeffs.npy", dist_coeffs)
+np.save(r"aruco/image_back/camera_back_matrix.npy", camera_matrix)
+np.save(r"aruco/image_back/dist_back_coeffs.npy", dist_coeffs)
