@@ -50,16 +50,6 @@ print("front camera is opened")
 
 # print("back camera is opened")
 
-    # 프레임 읽기 시도
-ret, frame = cap_front.read()
-if not ret or frame is None or frame.size == 0:
-    print("연결된 카메라가 없거나 프레임을 읽을 수 없음")
-    cap_front.release()
-
-else:
-    print(" 정상 작동 중")
-    cap_front.release()
-
 while True:
     mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기): "))
     if mode not in mode_state.values():

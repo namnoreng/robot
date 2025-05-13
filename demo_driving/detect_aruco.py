@@ -42,5 +42,4 @@ def start_detecting_aruco(cap, marker_dict, param_markers):
         key = cv.waitKey(1)
         if key == ord("q"):
             break
-    cap.release()
     cv.destroyAllWindows()
