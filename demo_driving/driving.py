@@ -1,19 +1,23 @@
 import cv2
 import cv2.aruco as aruco
 import numpy as np
-import os
 
-# 보정 행렬과 왜곡 계수를 불러옵니다.
-camera_matrix = np.load(r"camera_value/camera_back_matrix.npy")
-dist_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
 
-print("Loaded camera matrix : \n", camera_matrix)
-print("Loaded distortion coefficients : \n", dist_coeffs)
 
-# 마커의 실제 크기를 정확히 설정합니다 (예: 0.08미터 = 8cm).
-marker_length = 0.05 / 2.54  # 마커의 실제 크기 (미터 단위)
+
+
 
 def driving(cap, aruco_dict, parameters):
+    camera_matrix = np.load(r"camera_value/camera_back_matrix.npy")
+    dist_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
+
+    # 보정 행렬과 왜곡 계수를 불러옵니다.
+    print("Loaded camera matrix : \n", camera_matrix)
+    print("Loaded distortion coefficients : \n", dist_coeffs)
+
+    # 마커의 실제 크기를 정확히 설정합니다 (예: 0.08미터 = 8cm).
+    marker_length = 0.05 # 마커의 실제 크기 (미터 단위)
+
     #stop_point = False
     while True:
         ret, frame = cap.read()
@@ -84,7 +88,6 @@ def driving(cap, aruco_dict, parameters):
         # 결과 프레임을 표시합니다.
         cv2.imshow("frame", frame)
 
-        # 'q' 키를 누르면 종료합니다.
-        #if stop_point:
-        #    print("break point")
-        #    break
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            cv2.destroyAllWindows()
+            break
