@@ -2,6 +2,10 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 
+# 마커 크기 설정
+marker_length = 0.05
+
+# npy 파일 불러오기
 camera_matrix = np.load(r"camera_value/camera_back_matrix.npy")
 dist_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
 
@@ -10,41 +14,27 @@ print("Loaded camera matrix : \n", camera_matrix)
 print("Loaded distortion coefficients : \n", dist_coeffs)
 
 
-def driving(cap, aruco_dict, parameters):
-
-
-    # 마커의 실제 크기를 정확히 설정합니다 (예: 0.08미터 = 8cm).
-    marker_length = 0.05 # 마커의 실제 크기 (미터 단위)
-
-    #stop_point = False
+# 직진 아르코마커 인식
+def driving(cap, aruco_dict, parameters, marker_index):
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        # 그레이스케일로 변환합니다.
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        # 마커 코너좌표, ID, 거부된 마커 = 마커 탐지()
         corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(
             gray, aruco_dict, parameters=parameters
         )
 
+        found = False
         if ids is not None:
-            # 각 마커에 대해 루프를 돌면서 포즈를 추정합니다.
             for i in range(len(ids)):
-                # 회전벡터(rvec), 변환벡터(tvec)
                 rvec, tvec, _ = aruco.estimatePoseSingleMarkers(
                     corners[i], marker_length, camera_matrix, dist_coeffs
                 )
-
-                # 변환벡터 tvec의 크기를 계산하여 거리를 계산함
                 distance = np.linalg.norm(tvec)
 
-                #if distance < 0.3:
-                #    stop_point = True
-
-                # 회전벡터(rvec)를 회전 행렬로 변환
+                # 변환벡터 tvec의 크기를 계산하여 거리를 계산함
                 rotation_matrix, _ = cv2.Rodrigues(rvec)
 
                 # 회전 행렬에서 회전 각도 추출
@@ -83,9 +73,13 @@ def driving(cap, aruco_dict, parameters):
                     2,
                 )
 
-        # 결과 프레임을 표시합니다.
-        cv2.imshow("frame", frame)
+                if ids[i][0] == marker_index:
+                    if distance < 0.2:
+                        found = True
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            cv2.destroyAllWindows()
+        cv2.imshow("frame", frame)
+        if found:
             break
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+    cv2.destroyAllWindows()

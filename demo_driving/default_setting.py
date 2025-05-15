@@ -6,9 +6,12 @@ import find_destination
 import detect_aruco
 import driving
 
-print("serial 모듈 경로:", serial.__file__)
-
-mode_state = {"default" : 0, "find_empty_place" : 1, "find_car" : 2, "detect_aruco" : 3, "driving" : 4}  # 모드 종류 설정
+mode_state = {"default" : 0, 
+              "find_empty_place" : 1, 
+              "find_car" : 2, 
+              "detect_aruco" : 3, 
+              "driving" : 4,
+              "auto_driving":5}  # 모드 종류 설정
 
 mode = mode_state["default"]  # 초기 모드 설정
 
@@ -56,7 +59,8 @@ print("front camera is opened")
 # print("back camera is opened")
 
 while True:
-    mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기\n4: 아르코마 마커 거리 인식하기): "))
+    mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기\n" \
+    "4: 아르코마 마커 거리 인식하기, 5: 목표 설정 및 주행 해보기): "))
     if mode not in mode_state.values():
         print("잘못된 모드입니다. 다시 선택하세요.")
         continue
@@ -77,3 +81,31 @@ while True:
     elif mode == mode_state["driving"]:
         # 주행모드
         driving.driving(cap_front, marker_dict, param_markers)
+
+    elif mode == mode_state["auto_driving"]:
+        print("코드 들어가는거 확인")
+        first_marker, turning, secondmarker = find_destination.DFS(find_destination.parking_lot)  # 빈 공간 찾기 알고리즘 호출
+        serial_server.write(f"F".encode())
+        
+        driving.driving(cap_front, marker_dict, param_markers, first_marker)
+        serial_server.write(f"S".encode())
+        # 이 부분 딜레이가 필요할듯?
+
+        if(turning == "left"):
+            serial_server.write(f"TL".encode())
+        elif(turning == "right"):
+            serial_server.write(f"TR".encode())
+        # 이 명령 주고나서도 다 돌았는지 확인하기 위한 딜레이가 필요함
+        
+        driving.driving(cap_front, marker_dict, param_markers, secondmarker)
+        serial_server.write(f"S".encode())
+
+        if secondmarker%2 == 0:
+            serial_server.write(f"TR".encode())
+        else:
+            serial_server.write(f"TL".encode())
+    
+
+
+
+
