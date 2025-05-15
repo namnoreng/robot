@@ -29,9 +29,13 @@ param_markers = cv.aruco.DetectorParameters()
 
 # 카메라 초기화
 cap_front = cv.VideoCapture(0)  # 전방 카메라
+print(1)
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+print(2)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+print(3)
 cap_front.set(cv.CAP_PROP_FPS, 30)
+print(4)
 
 # cap_back = cv.VideoCapture(1)  # 후방 카메라
 # cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
