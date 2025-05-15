@@ -4,10 +4,11 @@ import serial
 import time
 import find_destination
 import detect_aruco
+import driving
 
 print("serial 모듈 경로:", serial.__file__)
 
-mode_state = {"default" : 0, "find_empty_place" : 1, "find_car" : 2, "detect_aruco" : 3}  # 모드 종류 설정
+mode_state = {"default" : 0, "find_empty_place" : 1, "find_car" : 2, "detect_aruco" : 3, "driving" : 4}  # 모드 종류 설정
 
 mode = mode_state["default"]  # 초기 모드 설정
 
@@ -69,7 +70,6 @@ while True:
         # 아르코 마커 인식 모드
         detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
 
-
-
-
-
+    elif mode == mode_state["driving"]:
+        # 주행모드
+        driving.driving(cap_front, marker_dict, param_markers)
