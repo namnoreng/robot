@@ -52,7 +52,7 @@ print("front camera is opened")
 # print("back camera is opened")
 
 while True:
-    mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기): "))
+    mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기\n4: 아르코마 마커 거리 인식하기): "))
     if mode not in mode_state.values():
         print("잘못된 모드입니다. 다시 선택하세요.")
         continue

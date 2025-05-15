@@ -1,10 +1,11 @@
 import cv2
 import cv2.aruco as aruco
 import numpy as np
+import os
 
 # 보정 행렬과 왜곡 계수를 불러옵니다.
-camera_matrix = np.load(r"aruco/image_back/camera_back_matrix.npy")
-dist_coeffs = np.load(r"aruco/image_back/dist_back_coeffs.npy")
+camera_matrix = np.load(r"camera_value/camera_back_matrix.npy")
+dist_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
 
 print("Loaded camera matrix : \n", camera_matrix)
 print("Loaded distortion coefficients : \n", dist_coeffs)
@@ -13,24 +14,33 @@ print("Loaded distortion coefficients : \n", dist_coeffs)
 marker_length = 0.05 / 2.54  # 마커의 실제 크기 (미터 단위)
 
 def driving(cap, aruco_dict, parameters):
+    #stop_point = False
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
+        # 그레이스케일로 변환합니다.
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # 마커 코너좌표, ID, 거부된 마커 = 마커 탐지()
         corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(
             gray, aruco_dict, parameters=parameters
         )
 
-        stop = False  # 루프 탈출 플래그
-
         if ids is not None:
+            # 각 마커에 대해 루프를 돌면서 포즈를 추정합니다.
             for i in range(len(ids)):
+                # 회전벡터(rvec), 변환벡터(tvec)
                 rvec, tvec, _ = aruco.estimatePoseSingleMarkers(
                     corners[i], marker_length, camera_matrix, dist_coeffs
                 )
+
+                # 변환벡터 tvec의 크기를 계산하여 거리를 계산함
                 distance = np.linalg.norm(tvec)
+
+                #if distance < 0.3:
+                #    stop_point = True
 
                 # 회전벡터(rvec)를 회전 행렬로 변환
                 rotation_matrix, _ = cv2.Rodrigues(rvec)
@@ -71,10 +81,10 @@ def driving(cap, aruco_dict, parameters):
                     2,
                 )
 
-                if distance < 0.3:
-                    stop = True
-
+        # 결과 프레임을 표시합니다.
         cv2.imshow("frame", frame)
-        if stop:
-            break
-    cv2.destroyAllWindows()
+
+        # 'q' 키를 누르면 종료합니다.
+        #if stop_point:
+        #    print("break point")
+        #    break

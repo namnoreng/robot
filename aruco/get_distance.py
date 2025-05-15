@@ -3,8 +3,8 @@ import cv2.aruco as aruco
 import numpy as np
 
 # 보정 행렬과 왜곡 계수를 불러옵니다.
-camera_matrix = np.load(r"aruco/image_back/camera_back_matrix.npy")
-dist_coeffs = np.load(r"aruco/image_back/dist_back_coeffs.npy")
+camera_matrix = np.load(r"image_back/camera_back_matrix.npy")
+dist_coeffs = np.load(r"image_back/dist_back_coeffs.npy")
 
 print("Loaded camera matrix : \n", camera_matrix)
 print("Loaded distortion coefficients : \n", dist_coeffs)
