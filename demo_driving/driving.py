@@ -74,7 +74,7 @@ def driving(cap, aruco_dict, parameters, marker_index):
                 )
 
                 if ids[i][0] == marker_index:
-                    if distance < 0.2:
+                    if distance < 0.4:
                         found = True
 
         cv2.imshow("frame", frame)

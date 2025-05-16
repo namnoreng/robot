@@ -84,26 +84,37 @@ while True:
 
     elif mode == mode_state["auto_driving"]:
         print("코드 들어가는거 확인")
+        car_number = input("주차할 차량 번호를 입력하세요: ")
         first_marker, turning, secondmarker = find_destination.DFS(find_destination.parking_lot)  # 빈 공간 찾기 알고리즘 호출
-        serial_server.write(f"F".encode())
+        #serial_server.write(f"F".encode())
+        
         
         driving.driving(cap_front, marker_dict, param_markers, first_marker)
-        serial_server.write(f"S".encode())
+        #serial_server.write(f"S".encode())
+        print("first marker detected")
         # 이 부분 딜레이가 필요할듯?
 
         if(turning == "left"):
-            serial_server.write(f"TL".encode())
+            #serial_server.write(f"TL".encode())
+            print("turning detected")
         elif(turning == "right"):
-            serial_server.write(f"TR".encode())
+            #serial_server.write(f"TR".encode())
+            print("turning detected")
         # 이 명령 주고나서도 다 돌았는지 확인하기 위한 딜레이가 필요함
         
         driving.driving(cap_front, marker_dict, param_markers, secondmarker)
-        serial_server.write(f"S".encode())
+        #serial_server.write(f"S".encode())
+        print("second marker detected")
 
         if secondmarker%2 == 0:
-            serial_server.write(f"TR".encode())
+            #serial_server.write(f"TR".encode())
+            print("arrived at destination")
         else:
-            serial_server.write(f"TL".encode())
+            #serial_server.write(f"TL".encode())
+            print("arrived at destination")
+
+        find_destination.park_car_at(find_destination.parking_lot, first_marker, turning, secondmarker, car_number)
+    
     
 
 
