@@ -11,7 +11,8 @@ mode_state = {"default" : 0,
               "find_car" : 2, 
               "detect_aruco" : 3, 
               "driving" : 4,
-              "auto_driving":5}  # 모드 종류 설정
+              "auto_driving" : 5,
+              "reset_position" : 6}  # 모드 종류 설정
 
 mode = mode_state["default"]  # 초기 모드 설정
 
@@ -60,7 +61,7 @@ print("front camera is opened")
 
 while True:
     mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기\n" \
-    "4: 아르코마 마커 거리 인식하기, 5: 목표 설정 및 주행 해보기): "))
+    "4: 아르코마 마커 거리 인식하기, 5: 목표 설정 및 주행 해보기, 6: 위치 초기화): "))
     if mode not in mode_state.values():
         print("잘못된 모드입니다. 다시 선택하세요.")
         continue
@@ -115,6 +116,9 @@ while True:
 
         find_destination.park_car_at(find_destination.parking_lot, first_marker, turning, secondmarker, car_number)
     
+
+    elif mode == mode_state["reset_position"]:
+        print("위치 초기화 모드 진입")
     
 
 
