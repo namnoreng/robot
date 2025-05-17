@@ -89,9 +89,28 @@ while True:
                 print("모드 4 전송")
                 return_message = serial_server.read_until(b'\n')
                 print(return_message.decode().strip())
+                
+            elif command == "5":
+                print("모드 5 전송")
+                serial_server.write(f"5".encode())
+
+            elif command == "6":
+                print("모드 6 전송")
+                serial_server.write(f"6".encode())
+
+            elif command == "7":
+                print("모드 7 전송")
+                serial_server.write(f"7".encode())
+
+            elif command == "8":
+                print("모드 8 전송")
+                serial_server.write(f"8".encode())
+
+
             elif command == "9":
                 serial_server.write(f"9".encode())
                 print("모드 9 전송")
+
             elif command == "exit":
                 print("기본 모드 종료")
                 break
@@ -170,6 +189,7 @@ while True:
 
     elif mode == mode_state["reset_position"]:
         print("위치 초기화 모드 진입")
+        driving.initialize_robot(cap_front, marker_dict, param_markers, 17,serial_server)
 
     elif mode == mode_state["stop"]:
         print("프로그램 종료")

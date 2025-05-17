@@ -1,6 +1,8 @@
 import cv2
 import cv2.aruco as aruco
 import numpy as np
+import serial
+import time
 
 # 마커 크기 설정
 marker_length = 0.05
@@ -12,6 +14,63 @@ dist_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
 # 보정 행렬과 왜곡 계수를 불러옵니다.
 print("Loaded camera matrix : \n", camera_matrix)
 print("Loaded distortion coefficients : \n", dist_coeffs)
+
+def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
+    FRAME_CENTER_X = 640   # 1280x720 해상도 기준
+    FRAME_CENTER_Y = 360
+    CENTER_TOLERANCE = 30  # 중앙 허용 오차 (픽셀)
+    ANGLE_TOLERANCE = 5    # 각도 허용 오차 (도)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("카메라 프레임을 읽지 못했습니다.")
+            continue
+
+        distance, (x_angle, y_angle, z_angle), (center_x, center_y) = find_aruco_info(
+            frame, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, marker_length
+        )
+
+        if distance is not None:
+            dx = center_x - FRAME_CENTER_X
+            angle_error = z_angle
+
+            print(f"중심 오차: ({dx}), 각도 오차: {angle_error:.2f}")
+
+            # 1. 회전값 먼저 맞추기
+            if abs(angle_error) > ANGLE_TOLERANCE:
+                if angle_error > 0:
+                    print("좌회전")
+                    serial_server.write('3'.encode())
+                else:
+                    print("우회전")
+                    serial_server.write('4'.encode())
+                continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
+
+            # 2. 회전이 맞으면 중앙값 맞추기
+            if abs(dx) > CENTER_TOLERANCE:
+                if dx > 0:
+                    print("오른쪽으로 이동")
+                    serial_server.write('6'.encode())
+                else:
+                    print("왼쪽으로 이동")
+                    serial_server.write('5'.encode())
+                continue  # 중앙이 맞을 때까지 반복
+
+            # 3. 둘 다 맞으면 정지
+            print("초기화 완료: 중앙+수직")
+            serial_server.write('9'.encode())  # 정지 명령
+            break
+
+        else:
+            print("마커를 찾지 못했습니다.")
+            serial_server.write('9'.encode())  # 마커를 찾지 못했을 때 정지 명령
+
+        cv2.imshow("frame", frame)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    cv2.destroyAllWindows()
 
 # 직진 아르코마커 인식
 def driving(cap, aruco_dict, parameters, marker_index):
