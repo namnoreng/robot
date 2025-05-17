@@ -12,7 +12,8 @@ mode_state = {"default" : 0,
               "detect_aruco" : 3, 
               "driving" : 4,
               "auto_driving" : 5,
-              "reset_position" : 6}  # 모드 종류 설정
+              "reset_position" : 6,
+              "stop": "stop"}  # 모드 종류 설정
 
 mode = mode_state["default"]  # 초기 모드 설정
 
@@ -169,6 +170,13 @@ while True:
 
     elif mode == mode_state["reset_position"]:
         print("위치 초기화 모드 진입")
+
+    elif mode == mode_state["stop"]:
+        print("프로그램 종료")
+        break
+    
+    else:
+        print("잘못된 모드입니다. 다시 선택하세요.")
     
 
 
