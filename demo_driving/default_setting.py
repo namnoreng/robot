@@ -82,13 +82,13 @@ while True:
             elif command == "3":
                 serial_server.write(f"3".encode())
                 print("모드 3 전송")
-                return_message = serial_server.read_until(b'\n')
-                print(return_message.decode().strip())
+                # return_message = serial_server.read_until(b'\n')
+                # print(return_message.decode().strip())
             elif command == "4":
                 serial_server.write(f"4".encode())
                 print("모드 4 전송")
-                return_message = serial_server.read_until(b'\n')
-                print(return_message.decode().strip())
+                # return_message = serial_server.read_until(b'\n')
+                # print(return_message.decode().strip())
                 
             elif command == "5":
                 print("모드 5 전송")
@@ -158,8 +158,9 @@ while True:
         # 이 명령 주고나서도 다 돌았는지 확인하기 위한 딜레이가 필요함
 
         while True:
-            return_message = serial_server.read_until(b'\n')
-            if return_message == b's\n':
+            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers,0,driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
+            if abs(z_angle) >= 89 and abs(z_angle) <= 91:
+                serial_server.write(f"9".encode())
                 print("turning complete")
                 time.sleep(5)
                 break
@@ -176,15 +177,18 @@ while True:
             serial_server.write(f"3".encode())
         
         while True:
-            return_message = serial_server.read_until(b'\n')
-            if return_message == b's\n':
+            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers,0,driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
+            if abs(z_angle) >= 89 and abs(z_angle) <= 91:
+                serial_server.write(f"9".encode())
                 print("turning complete")
+                time.sleep(5)
                 break
         
         print("arrived at destination")
         
         serial_server.write(f"9".encode())
-        find_destination.park_car_at(find_destination.parking_lot, first_marker, turning, secondmarker, car_number)
+        # 주차하는 코드인데 일단 주석처리 동일 테스트를 하기 위함
+        # find_destination.park_car_at(find_destination.parking_lot, first_marker, turning, secondmarker, car_number)
     
 
     elif mode == mode_state["reset_position"]:
