@@ -178,7 +178,7 @@ while True:
         
         while True:
             _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers,0,driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
-            if abs(z_angle) >= 89 and abs(z_angle) <= 91:
+            if abs(z_angle) >= -1 and abs(z_angle) <= 1:
                 serial_server.write(f"9".encode())
                 print("turning complete")
                 time.sleep(5)
