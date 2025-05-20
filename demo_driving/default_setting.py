@@ -138,8 +138,7 @@ while True:
     elif mode == mode_state["auto_driving"]:
         print("코드 들어가는거 확인")
         car_number = input("주차할 차량 번호를 입력하세요: ")
-        first_marker, turning, secondmarker = find_destination.DFS(find_destination.parking_lot)  # 빈 공간 찾기 알고리즘 호출
-        
+        first_marker, turning_1, secondmarker, turning_2 = find_destination.DFS(find_destination.parking_lot)  # 빈 공간 찾기 알고리즘 호출
         
         serial_server.write(f"1".encode())
         driving.driving(cap_front, marker_dict, param_markers, first_marker)
@@ -148,18 +147,18 @@ while True:
         # 이 부분 딜레이가 필요할듯?
         time.sleep(5)
 
-        if(turning == "left"):
+        if(turning_1 == "left"):
             serial_server.write(f"3".encode())
             print("turning detected")
 
-        elif(turning == "right"):
+        elif(turning_1 == "right"):
             serial_server.write(f"4".encode())
             print("turning detected")
         # 이 명령 주고나서도 다 돌았는지 확인하기 위한 딜레이가 필요함
 
         while True:
-            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers,0,driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
-            if abs(z_angle) >= 89 and abs(z_angle) <= 91:
+            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers,first_marker,driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
+            if abs(z_angle) >= -0.5 and abs(z_angle) <= 0.5:
                 serial_server.write(f"9".encode())
                 print("turning complete")
                 time.sleep(5)
@@ -171,13 +170,13 @@ while True:
         print("second marker detected")
 
         time.sleep(5)
-        if secondmarker%2 == 0:
+        if turning_2 == "left":
             serial_server.write(f"4".encode())
-        else:
+        elif turning_2 == "right":
             serial_server.write(f"3".encode())
         
         while True:
-            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers,0,driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
+            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers, secondmarker, driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
             if abs(z_angle) >= -1 and abs(z_angle) <= 1:
                 serial_server.write(f"9".encode())
                 print("turning complete")
