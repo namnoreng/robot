@@ -1,7 +1,11 @@
+# 기본적으로 필요한 모듈
 import cv2 as cv
 import numpy as np
 import serial
+import socket
 import time
+
+# 다른 모듈 불러오기
 import find_destination
 import detect_aruco
 import driving
@@ -27,6 +31,18 @@ try:
 except serial.SerialException as e:
     print(f"Serial communication error: {e}")
     serial_server = None  # 시리얼 객체를 None으로 설정하여 연결되지 않은 상태를 처리
+
+# TCP/IP 소켓 통신 초기화
+try:
+    tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_server.bind(('localhost', 12345))  # 서버 주소와 포트 설정
+    tcp_server.listen(1)  # 클라이언트 연결 대기
+    print("TCP server is listening on port 12345.")
+except socket.error as e:
+    print(f"Socket error: {e}")
+    tcp_server = None
+
+
 
 # ArUco 마커 설정
 marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
