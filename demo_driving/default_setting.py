@@ -35,13 +35,25 @@ except serial.SerialException as e:
 # TCP/IP 소켓 통신 초기화
 try:
     tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_server.bind(('localhost', 12345))  # 서버 주소와 포트 설정
-    tcp_server.listen(1)  # 클라이언트 연결 대기
+    tcp_server.bind(('0.0.0.0', 12345))  # 외부 장치 접속 허용
+    tcp_server.listen(1)
     print("TCP server is listening on port 12345.")
+    
+    client_socket, addr = tcp_server.accept()
+    print(f"Connection accepted from {addr}")
+    
+    while True:
+        data = client_socket.recv(1024)
+        if not data:
+            break
+        print(f"Received: {data.decode()}")
+        client_socket.sendall(data)  # echo back
+
+    client_socket.close()
+
 except socket.error as e:
     print(f"Socket error: {e}")
     tcp_server = None
-
 
 
 # ArUco 마커 설정
