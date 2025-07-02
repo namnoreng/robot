@@ -134,7 +134,6 @@ while True:
                 print("모드 8 전송")
                 serial_server.write(f"8".encode())
 
-
             elif command == "9":
                 serial_server.write(f"9".encode())
                 print("모드 9 전송")
@@ -228,9 +227,3 @@ while True:
     
     else:
         print("잘못된 모드입니다. 다시 선택하세요.")
-    
-
-
-
-
-
