@@ -1,7 +1,11 @@
+# 기본적으로 필요한 모듈
 import cv2 as cv
 import numpy as np
 import serial
+import socket
 import time
+
+# 다른 모듈 불러오기
 import find_destination
 import detect_aruco
 import driving
@@ -27,6 +31,30 @@ try:
 except serial.SerialException as e:
     print(f"Serial communication error: {e}")
     serial_server = None  # 시리얼 객체를 None으로 설정하여 연결되지 않은 상태를 처리
+
+# TCP/IP 소켓 통신 초기화
+try:
+    tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_server.bind(('0.0.0.0', 12345))  # 외부 장치 접속 허용
+    tcp_server.listen(1)
+    print("TCP server is listening on port 12345.")
+    
+    client_socket, addr = tcp_server.accept()
+    print(f"Connection accepted from {addr}")
+    
+    while True:
+        data = client_socket.recv(1024)
+        if not data:
+            break
+        print(f"Received: {data.decode()}")
+        client_socket.sendall(data)  # echo back
+
+    client_socket.close()
+
+except socket.error as e:
+    print(f"Socket error: {e}")
+    tcp_server = None
+
 
 # ArUco 마커 설정
 marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
@@ -111,7 +139,6 @@ while True:
             elif command == "8":
                 print("모드 8 전송")
                 serial_server.write(f"8".encode())
-
 
             elif command == "9":
                 serial_server.write(f"9".encode())
@@ -207,9 +234,3 @@ while True:
     
     else:
         print("잘못된 모드입니다. 다시 선택하세요.")
-    
-
-
-
-
-
