@@ -33,7 +33,7 @@ marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
 param_markers = cv.aruco.DetectorParameters()
 
 # 카메라 초기화
-cap_front = cv.VideoCapture(1)  # 전방 카메라
+cap_front = cv.VideoCapture(0)  # 전방 카메라
 print(1)
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 print(2)
@@ -42,10 +42,16 @@ print(3)
 cap_front.set(cv.CAP_PROP_FPS, 30)
 print(4)
 
+
+
 # cap_back = cv.VideoCapture(1)  # 후방 카메라
+# print(1)
 # cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+# print(2)
 # cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+# print(3)
 # cap_back.set(cv.CAP_PROP_FPS, 30)
+# print(4)
 
 # 카메라 연결 확인
 while not cap_front.isOpened():
@@ -165,6 +171,7 @@ while True:
                 break
         
         serial_server.write(f"1".encode())
+        time.sleep(1)
         driving.driving(cap_front, marker_dict, param_markers, secondmarker)
         serial_server.write(f"9".encode())
         print("second marker detected")
