@@ -41,7 +41,7 @@ def handle_client(client_socket, addr):
 def command_mode():
     global mode
     while True:
-        cmd = input("모드 입력 (register/send/exit): ").strip()
+        cmd = input("모드 입력 (register/send/exit 또는 메시지 입력): ").strip()
         if cmd == "register":
             mode = "register"
             print("[서버] 신규 기기 등록 모드로 변경")
@@ -52,8 +52,8 @@ def command_mode():
             print("[서버] 명령어 입력 종료")
             break
         elif mode == "send":
+            # 메시지 입력 처리
             try:
-                # app 번호와 메시지 입력: 예) 1 Hello app!
                 parts = cmd.split()
                 if len(parts) < 2:
                     print("[서버] 입력 형식: app번호 메시지")
@@ -61,12 +61,14 @@ def command_mode():
                 app_num, msg = int(parts[0]), " ".join(parts[1:])
                 if app_num in app_clients:
                     target_addr = app_clients[app_num]
-                    clients[target_addr][0].sendall(msg.encode())
+                    clients[target_addr][0].sendall((msg + '\n').encode())
                     print(f"[서버] app #{app_num}({target_addr})에게 메시지 전송: {msg}")
                 else:
                     print(f"[서버] 해당 app 번호 없음: {app_num}")
             except Exception as e:
                 print(f"[서버] 오류: {e}")
+        else:
+            print("[서버] 알 수 없는 명령입니다.")
 
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
