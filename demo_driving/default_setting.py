@@ -66,7 +66,7 @@ if current_platform == 'Windows':
     param_markers = cv.aruco.DetectorParameters()
 elif current_platform == 'Linux':
     marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
-    parameters = aruco.DetectorParameters_create()
+    param_markers = aruco.DetectorParameters_create()
 
 # 카메라 초기화 (os에 따라 다르게 설정)
 if current_platform == 'Windows':
