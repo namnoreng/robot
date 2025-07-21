@@ -5,6 +5,7 @@ import serial
 import socket
 import time
 import platform
+from cv2 import aruco
 
 # 다른 모듈 불러오기
 import find_destination
