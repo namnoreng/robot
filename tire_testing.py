@@ -1,14 +1,22 @@
 import cv2 as cv
-import numpy as np
+import platform
 
-# Open webcam with DSHOW backend
-cap = cv.VideoCapture(0, cv.CAP_DSHOW)
+# 운영체제 확인
+system_platform = platform.system()
 
+if system_platform == 'Windows':
+    cap = cv.VideoCapture(0, cv.CAP_DSHOW)  # Windows는 DirectShow 사용
+elif system_platform == 'Linux':
+    cap = cv.VideoCapture(0)               # Linux는 백엔드 지정 없이 사용
+else:
+    raise RuntimeError(f"{system_platform} 운영체제는 지원하지 않습니다.")
 
-# Check if webcam is opened
+# 카메라 확인
 if not cap.isOpened():
-    print("Error: Could not open first webcam.")
-    exit()
+    print("카메라를 열 수 없습니다.")
+else:
+    print(f"{system_platform} 환경에서 카메라 열기 성공")
+
 
 
 # Set resolution and FPS (optional)
