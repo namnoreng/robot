@@ -59,16 +59,20 @@ mode = mode_state["default"]  # 초기 모드 설정
 #     tcp_server = None
 
 
-# ArUco 마커 설정
-marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
-param_markers = cv.aruco.DetectorParameters()
+# ArUco 마커 설정(os에 따라 다르게 설정)
+if current_platform == 'Windows':
+    marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
+    param_markers = cv.aruco.DetectorParameters()
+elif current_platform == 'Linux':
+    marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
+    parameters = aruco.DetectorParameters_create()
 
 # 카메라 초기화 (os에 따라 다르게 설정)
 if current_platform == 'Windows':
     cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)  # Windows는 DirectShow 사용
 elif current_platform == 'Linux':
     cap_front = cv.VideoCapture(0)               # Linux는 백엔드 지정 없이 사용
-    
+
 print(1)
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 print(2)
