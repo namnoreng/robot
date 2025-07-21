@@ -4,11 +4,14 @@ import numpy as np
 import serial
 import socket
 import time
+import platform
 
 # 다른 모듈 불러오기
 import find_destination
 import detect_aruco
 import driving
+
+current_platform = platform.system()
 
 mode_state = {"default" : 0, 
               "find_empty_place" : 1, 
@@ -21,47 +24,51 @@ mode_state = {"default" : 0,
 
 mode = mode_state["default"]  # 초기 모드 설정
 
-# 시리얼 통신 초기화
-try:
-    serial_server = serial.Serial('COM10', 115200)  # Windows: COMx / Linux: '/dev/ttyUSB0'
-    if serial_server.is_open:
-        print("Serial communication is open.")
-    else:
-        print("Failed to open serial communication.")
-except serial.SerialException as e:
-    print(f"Serial communication error: {e}")
-    serial_server = None  # 시리얼 객체를 None으로 설정하여 연결되지 않은 상태를 처리
+# # 시리얼 통신 초기화
+# try:
+#     serial_server = serial.Serial('COM10', 115200)  # Windows: COMx / Linux: '/dev/ttyUSB0'
+#     if serial_server.is_open:
+#         print("Serial communication is open.")
+#     else:
+#         print("Failed to open serial communication.")
+# except serial.SerialException as e:
+#     print(f"Serial communication error: {e}")
+#     serial_server = None  # 시리얼 객체를 None으로 설정하여 연결되지 않은 상태를 처리
 
-# TCP/IP 소켓 통신 초기화
-try:
-    tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    tcp_server.bind(('0.0.0.0', 12345))  # 외부 장치 접속 허용
-    tcp_server.listen(1)
-    print("TCP server is listening on port 12345.")
+# # TCP/IP 소켓 통신 초기화
+# try:
+#     tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#     tcp_server.bind(('0.0.0.0', 12345))  # 외부 장치 접속 허용
+#     tcp_server.listen(1)
+#     print("TCP server is listening on port 12345.")
     
-    client_socket, addr = tcp_server.accept()
-    print(f"Connection accepted from {addr}")
+#     client_socket, addr = tcp_server.accept()
+#     print(f"Connection accepted from {addr}")
     
-    while True:
-        data = client_socket.recv(1024)
-        if not data:
-            break
-        print(f"Received: {data.decode()}")
-        client_socket.sendall(data)  # echo back
+#     while True:
+#         data = client_socket.recv(1024)
+#         if not data:
+#             break
+#         print(f"Received: {data.decode()}")
+#         client_socket.sendall(data)  # echo back
 
-    client_socket.close()
+#     client_socket.close()
 
-except socket.error as e:
-    print(f"Socket error: {e}")
-    tcp_server = None
+# except socket.error as e:
+#     print(f"Socket error: {e}")
+#     tcp_server = None
 
 
 # ArUco 마커 설정
 marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
 param_markers = cv.aruco.DetectorParameters()
 
-# 카메라 초기화
-cap_front = cv.VideoCapture(0)  # 전방 카메라
+# 카메라 초기화 (os에 따라 다르게 설정)
+if current_platform == 'Windows':
+    cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)  # Windows는 DirectShow 사용
+elif current_platform == 'Linux':
+    cap_front = cv.VideoCapture(0)               # Linux는 백엔드 지정 없이 사용
+    
 print(1)
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 print(2)
