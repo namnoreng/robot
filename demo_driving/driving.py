@@ -66,7 +66,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
             print("마커를 찾지 못했습니다.")
             serial_server.write('9'.encode())  # 마커를 찾지 못했을 때 정지 명령
 
-        cv2.imshow("frame", frame)
+        #cv2.imshow("frame", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
@@ -104,7 +104,7 @@ def driving(cap, aruco_dict, parameters, marker_index):
             if distance < 0.4:
                 break
 
-        cv2.imshow("frame", frame)
+        #cv2.imshow("frame", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
     cv2.destroyAllWindows()

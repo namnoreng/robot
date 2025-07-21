@@ -41,7 +41,7 @@ def start_detecting_aruco(cap, marker_dict, param_markers):
                     2,
                     line_type,
                 )
-        cv.imshow("frame", frame)
+        #cv.imshow("frame", frame)
         key = cv.waitKey(1)
         if key == ord("q"):
             break
