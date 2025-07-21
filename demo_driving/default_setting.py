@@ -25,16 +25,16 @@ mode_state = {"default" : 0,
 
 mode = mode_state["default"]  # 초기 모드 설정
 
-# # 시리얼 통신 초기화
-# try:
-#     serial_server = serial.Serial('COM10', 115200)  # Windows: COMx / Linux: '/dev/ttyUSB0'
-#     if serial_server.is_open:
-#         print("Serial communication is open.")
-#     else:
-#         print("Failed to open serial communication.")
-# except serial.SerialException as e:
-#     print(f"Serial communication error: {e}")
-#     serial_server = None  # 시리얼 객체를 None으로 설정하여 연결되지 않은 상태를 처리
+# 시리얼 통신 초기화
+try:
+    serial_server = serial.Serial('/dev/ttyACM0', 115200)  # Windows: COMx / Linux: '/dev/ttyUSB0'
+    if serial_server.is_open:
+        print("Serial communication is open.")
+    else:
+        print("Failed to open serial communication.")
+except serial.SerialException as e:
+    print(f"Serial communication error: {e}")
+    serial_server = None  # 시리얼 객체를 None으로 설정하여 연결되지 않은 상태를 처리
 
 # # TCP/IP 소켓 통신 초기화
 # try:
