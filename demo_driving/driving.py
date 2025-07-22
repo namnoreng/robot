@@ -35,9 +35,11 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
             print("카메라 프레임을 읽지 못했습니다.")
             continue
 
-        distance, (x_angle, y_angle, z_angle), (center_x, center_y) = find_aruco_info(
+        result = find_aruco_info(
             frame, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, marker_length
         )
+        print("find_aruco_info result:", result)
+        distance, (x_angle, y_angle, z_angle), (center_x, center_y) = result
 
         if distance is not None:
             dx = center_x - FRAME_CENTER_X
@@ -126,6 +128,7 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
     marker_length: 마커 실제 길이(m)
     반환값: (distance, (x_angle, y_angle, z_angle), (center_x, center_y)) 또는 (None, (None, None, None), (None, None))
     """
+    print("find_aruco_info called from:", __file__)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
 

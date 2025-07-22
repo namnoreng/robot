@@ -178,7 +178,7 @@ while True:
 
     elif mode == mode_state["driving"]:
         # 주행모드
-        driving.driving(cap_front, marker_dict, param_markers)
+        driving.driving(cap_front, marker_dict, param_markers, marker_index = 1)
 
     elif mode == mode_state["auto_driving"]:
         print("코드 들어가는거 확인")

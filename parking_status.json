@@ -8,7 +8,7 @@
   "1234": {
     "sector": 1,
     "side": "left",
-    "subzone": 1,
-    "direction": "right"
+    "subzone": 2,
+    "direction": "left"
   }
 }

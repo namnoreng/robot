@@ -49,8 +49,8 @@ print("front camera is opened")
 
 # OpenCV 버전에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv.__version__.split(".")
-if int(cv_version[0]) == 3:
-    marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
+if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters_create()
 else:
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
