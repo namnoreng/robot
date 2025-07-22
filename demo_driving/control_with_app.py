@@ -8,16 +8,15 @@ import platform
 from cv2 import aruco
 
 # 다른 모듈 불러오기
-import find_destination
-import detect_aruco
 import driving
+import detect_aruco
 
 # 플랫폼 구분
 current_platform = platform.system()
 
 # 시리얼 통신 초기화 (윈도우/리눅스 분기)
 if current_platform == "Windows":
-    serial_port = "COM3"  # 실제 연결된 포트로 변경 필요
+    serial_port = "COM3"
 elif current_platform == "Linux":
     serial_port = "/dev/ttyACM0"
 else:
@@ -81,14 +80,55 @@ try:
         print(f"[Server] Command received: {command}")
 
         # 명령에 따라 동작 수행 (아래는 예시)
-        if command == "find_empty_place":
-            find_destination.DFS(find_destination.parking_lot)
-            client_socket.sendall(b"OK: find_empty_place\n")
-        elif command == "find_car":
-            client_socket.sendall(b"Enter car number\n")
-            car_number = client_socket.recv(1024).decode().strip()
-            find_destination.find_car(find_destination.parking_lot, car_number)
-            client_socket.sendall(f"OK: find_car {car_number}\n".encode())
+        if command.startswith("PARK"):
+            # 예: "PARK,1,left,2,right,1234"
+            try:
+                _, sector, side, subzone, direction, car_number = command.split(",")
+                sector = int(sector)
+                subzone = int(subzone)
+                # 목적지 정보(sector, side, subzone, direction)를 활용해서 직접 주행 로직 작성
+                # 예시: auto driving 모드처럼 직접 명령 조합
+                print(f"[Client] 목적지: {sector}, {side}, {subzone}, {direction}, {car_number}")
+
+                # 예시: 첫 번째 마커까지 직진
+                serial_server.write(b"1")
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector)
+                serial_server.write(b"9")
+                time.sleep(2)
+
+                # 방향에 따라 회전
+                if side == "left":
+                    serial_server.write(b"3")
+                elif side == "right":
+                    serial_server.write(b"4")
+                time.sleep(2)
+                serial_server.write(b"9")
+
+                serial_server.write(b"1")
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone)
+                serial_server.write(b"9")
+                time.sleep(2)
+
+                # 방향에 따라 회전
+                if direction == "left":
+                    serial_server.write(b"3")
+                elif direction == "right":
+                    serial_server.write(b"4")
+                time.sleep(2)
+                serial_server.write(b"9")
+
+                serial_server.write(b"1")
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=10)
+                serial_server.write(b"7")
+                # 필요하다면 추가 주행/회전/정지 등 구현
+
+                client_socket.sendall(b"OK: PARK command received\n")
+            except Exception as e:
+                print(f"[Client] PARK 명령 파싱 오류: {e}")
+                client_socket.sendall(b"ERROR: PARK command parse error\n")
+        elif command.startswith("OUT"):
+            # 출차 관련 동작
+            client_socket.sendall(b"OK: OUT command received\n")
         elif command == "detect_aruco":
             detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
             client_socket.sendall(b"OK: detect_aruco\n")
