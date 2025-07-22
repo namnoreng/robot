@@ -57,29 +57,30 @@ else:
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters()
 
-# 서버 소켓 초기화 (직접 입력)
-host_input = input("Enter server IP (default: 0.0.0.0): ").strip()
+# 클라이언트 소켓 초기화 (서버에 접속)
+host_input = input("Enter server IP (default: 127.0.0.1): ").strip()
 port_input = input("Enter server port (default: 12345): ").strip()
-HOST = host_input if host_input else '0.0.0.0'
+HOST = host_input if host_input else '127.0.0.1'
 PORT = int(port_input) if port_input else 12345
 
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind((HOST, PORT))
-server_socket.listen(1)
-print(f"[Server] Waiting for app connection... ({HOST}:{PORT})")
-client_socket, addr = server_socket.accept()
-print(f"[Server] App connected: {addr}")
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((HOST, PORT))
+print(f"[Client] Connected to server: {HOST}:{PORT}")
+
+# 서버에 기기 타입 전송 (예: robot)
+client_socket.sendall(b"robot\n")
 
 try:
     while True:
+        # 서버로부터 명령을 받음
         data = client_socket.recv(1024)
         if not data:
-            print("[Server] App disconnected")
+            print("[Client] Server disconnected")
             break
         command = data.decode().strip()
-        print(f"[App] Command received: {command}")
+        print(f"[Server] Command received: {command}")
 
-        # Execute action based on command
+        # 명령에 따라 동작 수행 (아래는 예시)
         if command == "find_empty_place":
             find_destination.DFS(find_destination.parking_lot)
             client_socket.sendall(b"OK: find_empty_place\n")
@@ -95,7 +96,6 @@ try:
             driving.driving(cap_front, marker_dict, param_markers)
             client_socket.sendall(b"OK: driving\n")
         elif command == "auto_driving":
-            # Add implementation if needed
             client_socket.sendall(b"OK: auto_driving\n")
         elif command == "reset_position":
             driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server)
@@ -105,11 +105,11 @@ try:
             break
         else:
             client_socket.sendall(b"Unknown command\n")
+            print("[Client] Unknown command sent. Closing connection.")
 except Exception as e:
-    print(f"[Server] Error: {e}")
+    print(f"[Client] Error: {e}")
 
 client_socket.close()
-server_socket.close()
 cap_front.release()
 cv.destroyAllWindows()
 
