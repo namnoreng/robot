@@ -118,7 +118,9 @@ try:
                 serial_server.write(b"9")
 
                 serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=10)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=0)
+                serial_server.write(b"9")
+                time.sleep(2)
                 serial_server.write(b"7")
                 # 필요하다면 추가 주행/회전/정지 등 구현
 

@@ -87,7 +87,7 @@ def handle_client(client_socket, addr):
                             robot_addr = robot_clients[1]
                             robot_sock = clients[robot_addr][0]
                             robot_sock.sendall(f"PARK,{sector},{side},{subzone},{direction},{car_number}\n".encode())
-                        save_parking_status(export_parking_status())
+                        #save_parking_status(export_parking_status())
                     else:
                         print("[서버] 빈자리가 없습니다.")
                 elif cmd == "OUT":
@@ -104,7 +104,7 @@ def handle_client(client_socket, addr):
                             robot_sock = clients[robot_addr][0]
                             robot_sock.sendall(f"OUT,{sector},{side},{subzone},{direction},{car_number}\n".encode())
                         # 차량 출차 정보 저장
-                        save_parking_status(export_parking_status())
+                       # save_parking_status(export_parking_status())
                     else:
                         print(f"[서버] 차량 {car_number}의 위치를 찾을 수 없습니다.")
                 else:
