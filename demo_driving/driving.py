@@ -19,9 +19,11 @@ cv_version = cv2.__version__.split(".")
 if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
     marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters_create()
+    print("Using OpenCV 3.x")
 else:
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters()
+    print("Using OpenCV 4.x")
 
 def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
     FRAME_CENTER_X = 640   # 1280x720 해상도 기준
@@ -135,14 +137,14 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
     if ids is not None:
         for i in range(len(ids)):
             if ids[i][0] == marker_index:
-                # 포즈 추정
-                rvec, tvec, _ = aruco.estimatePoseSingleMarkers(
-                    corners[i], marker_length, camera_matrix, dist_coeffs
+                # 포즈 추정 (corners[i] → [corners[i]])
+                rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
+                    np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
                 )
-                distance = np.linalg.norm(tvec)
+                distance = np.linalg.norm(tvecs[0][0])
 
                 # 회전 행렬 및 각도
-                rotation_matrix, _ = cv2.Rodrigues(rvec)
+                rotation_matrix, _ = cv2.Rodrigues(rvecs[0][0])
                 sy = np.sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
                 singular = sy < 1e-6
 
