@@ -15,6 +15,14 @@ dist_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
 print("Loaded camera matrix : \n", camera_matrix)
 print("Loaded distortion coefficients : \n", dist_coeffs)
 
+cv_version = cv2.__version__.split(".")
+if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters_create()
+else:
+    marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters()
+
 def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
     FRAME_CENTER_X = 640   # 1280x720 해상도 기준
     FRAME_CENTER_Y = 360
