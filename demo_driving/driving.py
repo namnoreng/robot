@@ -138,9 +138,17 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
         for i in range(len(ids)):
             if ids[i][0] == marker_index:
                 # 포즈 추정 (corners[i] → [corners[i]])
-                rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
-                    np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
-                )
+                cv_version = cv2.__version__.split(".")
+                if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+                    # OpenCV 3.2.x 이하
+                    rvecs, tvecs = aruco.estimatePoseSingleMarkers(
+                        np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                    )
+                else:
+                    # OpenCV 3.3.x 이상 또는 4.x
+                    rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
+                        np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                    )
                 distance = np.linalg.norm(tvecs[0][0])
 
                 # 회전 행렬 및 각도
