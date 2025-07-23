@@ -93,7 +93,6 @@ try:
                 # 예시: 첫 번째 마커까지 직진
                 serial_server.write(b"1")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=sector)
-                print("sector 회전 완료 ")
                 serial_server.write(b"9")
                 time.sleep(2)
 
@@ -113,12 +112,13 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "s":
                                 break
+                print("sector 회전 완료 ")
+                driving.flush_camera(cap_front, 5)  # 카메라 플러시
                 time.sleep(2)
                 serial_server.write(b"9")
 
                 serial_server.write(b"1")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone)
-                print("subzone 회전 완료")
                 serial_server.write(b"9")
                 time.sleep(2)
 
@@ -137,6 +137,8 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "s":
                                 break
+                print("subzone 회전 완료")
+                driving.flush_camera(cap_front, 5)  # 카메라 플러시
                 time.sleep(2)
                 serial_server.write(b"9")
 

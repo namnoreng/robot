@@ -25,6 +25,10 @@ else:
     param_markers = aruco.DetectorParameters()
     print("Using OpenCV 4.x")
 
+def flush_camera(cap, num=5):
+    for _ in range(num):
+        cap.read()
+
 def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
     FRAME_CENTER_X = 640   # 1280x720 해상도 기준
     FRAME_CENTER_Y = 360
