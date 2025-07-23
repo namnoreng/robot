@@ -7,14 +7,6 @@ import time
 # 마커 크기 설정
 marker_length = 0.05
 
-# npy 파일 불러오기
-camera_matrix = np.load(r"camera_value/camera_back_matrix.npy")
-dist_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
-
-# 보정 행렬과 왜곡 계수를 불러옵니다.
-print("Loaded camera matrix : \n", camera_matrix)
-print("Loaded distortion coefficients : \n", dist_coeffs)
-
 cv_version = cv2.__version__.split(".")
 if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
     marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
@@ -29,7 +21,7 @@ def flush_camera(cap, num=5):
     for _ in range(num):
         cap.read()
 
-def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
+def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, camera_matrix, dist_coeffs):
     FRAME_CENTER_X = 640   # 1280x720 해상도 기준
     FRAME_CENTER_Y = 360
     CENTER_TOLERANCE = 30  # 중앙 허용 오차 (픽셀)
@@ -89,7 +81,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server):
     cv2.destroyAllWindows()
 
 # 직진 아르코마커 인식
-def driving(cap, aruco_dict, parameters, marker_index):
+def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs):
     while True:
         ret, frame = cap.read()
         if not ret:

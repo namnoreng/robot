@@ -37,15 +37,36 @@ if serial_port:
 # 카메라 초기화 (윈도우/리눅스 분기)
 if current_platform == "Windows":
     cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)
+    cap_back = cv.VideoCapture(1, cv.CAP_DSHOW)
 else:
     cap_front = cv.VideoCapture(0)
+    cap_back = cv.VideoCapture(1)
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_front.set(cv.CAP_PROP_FPS, 30)
+cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+cap_back.set(cv.CAP_PROP_FPS, 30)
 while not cap_front.isOpened():
     print("waiting for front camera")
     time.sleep(1)
 print("front camera is opened")
+
+while not cap_back.isOpened():
+    print("waiting for back camera")
+    time.sleep(1)
+
+# npy 파일 불러오기
+camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
+camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
+dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
+dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
+
+# 보정 행렬과 왜곡 계수를 불러옵니다.
+print("Loaded front camera matrix : \n", camera_front_matrix)
+print("Loaded front distortion coefficients : \n", dist_front_coeffs)
+print("Loaded back camera matrix : \n", camera_back_matrix)
+print("Loaded back distortion coefficients : \n", dist_back_coeffs)
 
 # OpenCV 버전에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv.__version__.split(".")
@@ -92,7 +113,7 @@ try:
 
                 # 예시: 첫 번째 마커까지 직진
                 serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 serial_server.write(b"9")
                 time.sleep(2)
 
@@ -118,20 +139,20 @@ try:
                 serial_server.write(b"9")
 
                 serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 serial_server.write(b"9")
                 time.sleep(2)
 
                 # 방향에 따라 회전
                 if direction == "left":
-                    serial_server.write(b"3")
+                    serial_server.write(b"4")
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
                             if recv == "s":
                                 break
                 elif direction == "right":
-                    serial_server.write(b"4")
+                    serial_server.write(b"3")
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
@@ -143,7 +164,7 @@ try:
                 serial_server.write(b"9")
 
                 serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=0)
+                driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 serial_server.write(b"9")
                 time.sleep(2)
                 # 필요하다면 추가 주행/회전/정지 등 구현
@@ -159,12 +180,12 @@ try:
             detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
             client_socket.sendall(b"OK: detect_aruco\n")
         elif command == "driving":
-            driving.driving(cap_front, marker_dict, param_markers)
+            driving.driving(cap_front, marker_dict, param_markers, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
             client_socket.sendall(b"OK: driving\n")
         elif command == "auto_driving":
             client_socket.sendall(b"OK: auto_driving\n")
         elif command == "reset_position":
-            driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server)
+            driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
             client_socket.sendall(b"OK: reset_position\n")
         elif command == "stop":
             client_socket.sendall(b"OK: stop\n")
