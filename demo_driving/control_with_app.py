@@ -47,6 +47,8 @@ cap_front.set(cv.CAP_PROP_FPS, 30)
 cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_back.set(cv.CAP_PROP_FPS, 30)
+
+# 카메라가 열릴 때까지 대기
 while not cap_front.isOpened():
     print("waiting for front camera")
     time.sleep(1)
@@ -55,6 +57,7 @@ print("front camera is opened")
 while not cap_back.isOpened():
     print("waiting for back camera")
     time.sleep(1)
+print("back camera is opened")
 
 # npy 파일 불러오기
 camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
