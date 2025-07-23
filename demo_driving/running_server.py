@@ -18,13 +18,16 @@ mode = "register"
 PARKING_STATUS_FILE = "parking_status.json"
 
 def save_parking_status(parking_lot):
-    with open(PARKING_STATUS_FILE, "w", encoding="utf-8") as f:
-        json.dump(parking_lot, f, ensure_ascii=False, indent=2)
+    # json 저장 비활성화
+    # with open(PARKING_STATUS_FILE, "w", encoding="utf-8") as f:
+    #     json.dump(parking_lot, f, ensure_ascii=False, indent=2)
+    pass
 
 def load_parking_status():
-    if os.path.exists(PARKING_STATUS_FILE):
-        with open(PARKING_STATUS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+    # json 불러오기 비활성화
+    # if os.path.exists(PARKING_STATUS_FILE):
+    #     with open(PARKING_STATUS_FILE, "r", encoding="utf-8") as f:
+    #         return json.load(f)
     return {}
 
 # 서버 시작 시
@@ -35,6 +38,13 @@ for car_number, info in parking_status.items():
         find_destination.parking_lot,
         info["sector"], info["side"], info["subzone"], info["direction"], car_number
     )
+
+def convert_to_android_format(sector, side, subzone, direction):
+    sector_chr = chr(ord('a') + int(sector) - 1)
+    side_chr = 'L' if side == 'left' else 'R'
+    subzone_chr = chr(ord('a') + int(subzone) - 1)
+    direction_chr = 'L' if direction == 'left' else 'R'
+    return f"{sector_chr}{side_chr}{subzone_chr}{direction_chr}"
 
 def handle_client(client_socket, addr):
     global app_counter, robot_counter
@@ -87,6 +97,12 @@ def handle_client(client_socket, addr):
                             robot_addr = robot_clients[1]
                             robot_sock = clients[robot_addr][0]
                             robot_sock.sendall(f"PARK,{sector},{side},{subzone},{direction},{car_number}\n".encode())
+                        # === 여기서 앱에 메시지 전송 ===
+                        android_format = convert_to_android_format(sector, side, subzone, direction)
+                        if 1 in app_clients:
+                            app_addr = app_clients[1]
+                            app_sock = clients[app_addr][0]
+                            app_sock.sendall(f"PARKED,{android_format},{car_number}\n".encode())
                         save_parking_status(export_parking_status())
                     else:
                         print("[서버] 빈자리가 없습니다.")
@@ -109,7 +125,22 @@ def handle_client(client_socket, addr):
                         print(f"[서버] 차량 {car_number}의 위치를 찾을 수 없습니다.")
                 else:
                     print("[서버] 알 수 없는 명령")
-            # 로봇에서 온 응답을 앱에게 전달하려면 여기에 추가
+            elif device_type == "robot":
+                # 로봇에서 온 메시지 처리
+                # 예: DONE,1,left,1,left,1111
+                if msg.startswith("DONE"):
+                    try:
+                        _, sector, side, subzone, direction, car_number = msg.split(",")
+                        android_format = convert_to_android_format(sector, side, subzone, direction)
+                        # parked 메시지 앱에 전송
+                        if 1 in app_clients:
+                            app_addr = app_clients[1]
+                            app_sock = clients[app_addr][0]
+                            app_sock.sendall(f"parked,{android_format},{car_number}\n".encode())
+                            print(f"[서버] parked,{android_format},{car_number} → 앱에 전송")
+                    except Exception as e:
+                        print(f"[서버] DONE 메시지 파싱 오류: {e}")
+                # 필요시 다른 로봇 메시지도 처리
 
     except Exception as e:
         print(f"[{addr}] Error: {e}")

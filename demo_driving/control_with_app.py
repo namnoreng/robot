@@ -91,38 +91,37 @@ try:
                 print(f"[Client] 목적지: {sector}, {side}, {subzone}, {direction}, {car_number}")
 
                 # 예시: 첫 번째 마커까지 직진
-                #serial_server.write(b"1")
+                serial_server.write(b"1")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=sector)
-                #serial_server.write(b"9")
+                serial_server.write(b"9")
                 time.sleep(2)
 
                 # 방향에 따라 회전
-                # if side == "left":
-                #     serial_server.write(b"3")
-                # elif side == "right":
-                #     serial_server.write(b"4")
-                # time.sleep(2)
-                # serial_server.write(b"9")
+                if side == "left":
+                    serial_server.write(b"3")
+                elif side == "right":
+                    serial_server.write(b"4")
+                time.sleep(2)
+                serial_server.write(b"9")
 
-                # serial_server.write(b"1")
+                serial_server.write(b"1")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone)
-                # serial_server.write(b"9")
+                serial_server.write(b"9")
                 time.sleep(2)
 
-                # # 방향에 따라 회전
-                # if direction == "left":
-                #     serial_server.write(b"3")
-                # elif direction == "right":
-                #     serial_server.write(b"4")
-                # time.sleep(2)
-                # serial_server.write(b"9")
+                # 방향에 따라 회전
+                if direction == "left":
+                    serial_server.write(b"3")
+                elif direction == "right":
+                    serial_server.write(b"4")
+                time.sleep(2)
+                serial_server.write(b"9")
 
-                # serial_server.write(b"1")
-                # driving.driving(cap_front, marker_dict, param_markers, marker_index=0)
-                # serial_server.write(b"9")
-                # time.sleep(2)
-                # serial_server.write(b"7")
-                # # 필요하다면 추가 주행/회전/정지 등 구현
+                serial_server.write(b"1")
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=0)
+                serial_server.write(b"9")
+                time.sleep(2)
+                # 필요하다면 추가 주행/회전/정지 등 구현
 
                 client_socket.sendall(b"OK: PARK command received\n")
             except Exception as e:
