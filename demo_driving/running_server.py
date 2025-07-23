@@ -156,10 +156,21 @@ def handle_client(client_socket, addr):
             del clients[addr]
         client_socket.close()
 
+def reset_all_parking():
+    # 모든 공간을 비움
+    for sector in find_destination.parking_lot:
+        for side in ["left", "right"]:
+            subzones = getattr(sector, side)
+            for subzone in subzones:
+                for direction in ["left", "right"]:
+                    space = getattr(subzone, direction)
+                    space.car_number = None
+    print("[서버] 모든 주차공간이 초기화되었습니다.")
+
 def command_mode():
     global mode
     while True:
-        cmd = input("모드 입력 (register/send/exit 또는 [app|robot]번호 메시지): ").strip()
+        cmd = input("모드 입력 (register/send/exit 또는 [app|robot|server]번호 메시지): ").strip()
         if cmd == "register":
             mode = "register"
             print("[서버] 신규 기기 등록 모드로 변경")
@@ -170,12 +181,10 @@ def command_mode():
             print("[서버] 명령어 입력 종료")
             break
         elif mode == "send":
-            # 메시지 입력 처리
             try:
-                # 입력 예시: app 1 메시지내용   또는   robot 2 메시지내용
                 parts = cmd.split()
                 if len(parts) < 3:
-                    print("[서버] 입력 형식: [app|robot] 번호 메시지")
+                    print("[서버] 입력 형식: [app|robot|server] 번호 메시지")
                     continue
                 target_type, num, msg = parts[0], int(parts[1]), " ".join(parts[2:])
                 if target_type == "app":
@@ -192,8 +201,57 @@ def command_mode():
                         print(f"[서버] robot #{num}({target_addr})에게 메시지 전송: {msg}")
                     else:
                         print(f"[서버] 해당 robot 번호 없음: {num}")
+                elif target_type == "server":
+                    # RESET_PARKING 명령 추가
+                    if msg.strip().upper() == "RESET_PARKING":
+                        reset_all_parking()
+                        save_parking_status(export_parking_status())
+                        print("[서버] 주차장 상태가 초기화되었습니다.")
+                        continue
+                    # 기존 IN/OUT 처리
+                    try:
+                        cmd2, car_number = msg.split(",")
+                        cmd2 = cmd2.strip().upper()
+                        car_number = car_number.strip()
+                    except Exception:
+                        print("[서버] 잘못된 메시지 형식")
+                        continue
+
+                    if cmd2 == "IN":
+                        result = find_destination.DFS(find_destination.parking_lot)
+                        if result:
+                            sector, side, subzone, direction = result
+                            find_destination.park_car_at(find_destination.parking_lot, sector, side, subzone, direction, car_number)
+                            print(f"[서버] 차량 {car_number}를 {sector},{side},{subzone},{direction}에 주차")
+                            if 1 in robot_clients:
+                                robot_addr = robot_clients[1]
+                                robot_sock = clients[robot_addr][0]
+                                robot_sock.sendall(f"PARK,{sector},{side},{subzone},{direction},{car_number}\n".encode())
+                            android_format = convert_to_android_format(sector, side, subzone, direction)
+                            if 1 in app_clients:
+                                app_addr = app_clients[1]
+                                app_sock = clients[app_addr][0]
+                                app_sock.sendall(f"PARKED,{android_format},{car_number}\n".encode())
+                            save_parking_status(export_parking_status())
+                        else:
+                            print("[서버] 빈자리가 없습니다.")
+                    elif cmd2 == "OUT":
+                        result = find_destination.find_car(find_destination.parking_lot, car_number)
+                        if result:
+                            sector, side, subzone, direction = result
+                            find_destination.park_car_at(find_destination.parking_lot, sector, side, subzone, direction, "")
+                            print(f"[서버] 차량 {car_number}를 {sector},{side},{subzone},{direction}에서 출차")
+                            if 1 in robot_clients:
+                                robot_addr = robot_clients[1]
+                                robot_sock = clients[robot_addr][0]
+                                robot_sock.sendall(f"OUT,{sector},{side},{subzone},{direction},{car_number}\n".encode())
+                            save_parking_status(export_parking_status())
+                        else:
+                            print(f"[서버] 차량 {car_number}의 위치를 찾을 수 없습니다.")
+                    else:
+                        print("[서버] 알 수 없는 명령")
                 else:
-                    print("[서버] 대상은 app 또는 robot만 가능합니다.")
+                    print("[서버] 대상은 app, robot, server만 가능합니다.")
             except Exception as e:
                 print(f"[서버] 오류: {e}")
         else:
