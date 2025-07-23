@@ -99,8 +99,19 @@ try:
                 # 방향에 따라 회전
                 if side == "left":
                     serial_server.write(b"3")
+                    # 회전 완료 신호(s) 대기
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            if recv == "s":
+                                break
                 elif side == "right":
                     serial_server.write(b"4")
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            if recv == "s":
+                                break
                 time.sleep(2)
                 serial_server.write(b"9")
 
@@ -112,8 +123,18 @@ try:
                 # 방향에 따라 회전
                 if direction == "left":
                     serial_server.write(b"3")
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            if recv == "s":
+                                break
                 elif direction == "right":
                     serial_server.write(b"4")
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            if recv == "s":
+                                break
                 time.sleep(2)
                 serial_server.write(b"9")
 
