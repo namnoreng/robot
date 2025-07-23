@@ -93,6 +93,7 @@ try:
                 # 예시: 첫 번째 마커까지 직진
                 serial_server.write(b"1")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=sector)
+                print("sector 회전 완료 ")
                 serial_server.write(b"9")
                 time.sleep(2)
 
@@ -117,6 +118,7 @@ try:
 
                 serial_server.write(b"1")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone)
+                print("subzone 회전 완료")
                 serial_server.write(b"9")
                 time.sleep(2)
 
