@@ -47,22 +47,24 @@ def convert_to_android_format(sector, side, subzone, direction):
     return f"{sector_chr}{side_chr}{subzone_chr}{direction_chr}"
 
 def handle_client(client_socket, addr):
-    global app_counter, robot_counter
     print(f"[+] Connected by {addr}")
     try:
         device_type = client_socket.recv(1024).decode().strip()
         print(f"[{addr}] Device type: {device_type}")
         clients[addr] = (client_socket, device_type)
         if device_type == "app":
-            app_clients[app_counter] = addr
-            app_num = app_counter
-            print(f"[서버] app #{app_counter} 등록: {addr}")
-            app_counter += 1
+            # 1번부터 비어있는 번호를 찾아 할당
+            app_num = 1
+            while app_num in app_clients:
+                app_num += 1
+            app_clients[app_num] = addr
+            print(f"[서버] app #{app_num} 등록: {addr}")
         elif device_type == "robot":
-            robot_clients[robot_counter] = addr
-            robot_num = robot_counter
-            print(f"[서버] robot #{robot_counter} 등록: {addr}")
-            robot_counter += 1
+            robot_num = 1
+            while robot_num in robot_clients:
+                robot_num += 1
+            robot_clients[robot_num] = addr
+            print(f"[서버] robot #{robot_num} 등록: {addr}")
         else:
             print(f"[서버] 알 수 없는 타입: {device_type}")
             return
