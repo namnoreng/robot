@@ -39,7 +39,7 @@ def darknet_worker():
         
         start_time = time.time()
         try:
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=2)
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)  # 타임아웃 제거
             inference_time = time.time() - start_time
             
             print(f"[빠른모드] 프레임 {frame_id} 추론: {inference_time:.2f}초")
@@ -64,8 +64,6 @@ def darknet_worker():
                 'output': result.stdout.decode() if result.stdout else ""
             })
             
-        except subprocess.TimeoutExpired:
-            print(f"[빠른모드] 프레임 {frame_id} 타임아웃 (2초)")
         except Exception as e:
             print(f"[빠른모드] 오류: {e}")
 
