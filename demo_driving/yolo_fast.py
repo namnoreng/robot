@@ -30,9 +30,9 @@ def darknet_worker():
             
         frame, frame_id = frame_data
         
-        # 매우 작은 해상도로 리사이즈 (속도 최우선)
-        tiny_frame = cv2.resize(frame, (416, 416))  # YOLO 입력 크기에 맞춤
-        cv2.imwrite(TEMP_FILENAME, tiny_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
+        # 더욱 작은 해상도로 리사이즈 (속도 최우선)
+        tiny_frame = cv2.resize(frame, (320, 320))  # 더 작게 변경
+        cv2.imwrite(TEMP_FILENAME, tiny_frame, [cv2.IMWRITE_JPEG_QUALITY, 40])  # 품질도 더 낮춤
         
         # darknet 실행 (최소한의 옵션)
         cmd = [DARKNET_PATH, "detector", "test", DATA_PATH, CONFIG_PATH, WEIGHTS_PATH, TEMP_FILENAME, "-dont_show"]
