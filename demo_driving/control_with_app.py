@@ -166,7 +166,7 @@ try:
                 time.sleep(2)
                 serial_server.write(b"9")
 
-                serial_server.write(b"1")
+                serial_server.write(b"2")
                 driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 serial_server.write(b"9")
                 time.sleep(2)
