@@ -166,7 +166,7 @@ try:
                 time.sleep(2)
                 serial_server.write(b"9")
 
-                serial_server.write(b"1")
+                serial_server.write(b"2")
                 driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 serial_server.write(b"9")
                 time.sleep(2)
@@ -193,13 +193,21 @@ try:
         elif command == "stop":
             client_socket.sendall(b"OK: stop\n")
             break
+        elif command == "camera_test":
+            print("[Client] 카메라 테스트 시작")
+            # 앞/뒤 카메라 각각 테스트
+            print("[Client] front camera test")
+            detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
+            print("[Client] back camera test")
+            detect_aruco.start_detecting_aruco(cap_back, marker_dict, param_markers)
+            client_socket.sendall(b"OK: camera_test\n")
         else:
             client_socket.sendall(b"Unknown command\n")
             print("[Client] Unknown command sent. Closing connection.")
+        
 except Exception as e:
     print(f"[Client] Error: {e}")
 
 client_socket.close()
 cap_front.release()
 cv.destroyAllWindows()
-
