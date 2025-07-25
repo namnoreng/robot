@@ -25,16 +25,25 @@ mode_state = {"default" : 0,
 
 mode = mode_state["default"]  # 초기 모드 설정
 
-# 시리얼 통신 초기화
-try:
-    serial_server = serial.Serial('/dev/ttyACM0', 115200)  # Windows: COMx / Linux: '/dev/ttyUSB0'
-    if serial_server.is_open:
-        print("Serial communication is open.")
-    else:
-        print("Failed to open serial communication.")
-except serial.SerialException as e:
-    print(f"Serial communication error: {e}")
-    serial_server = None  # 시리얼 객체를 None으로 설정하여 연결되지 않은 상태를 처리
+# 시리얼 통신 초기화 (플랫폼별 포트 설정)
+if current_platform == 'Windows':
+    serial_port = "COM3"
+elif current_platform == 'Linux':
+    serial_port = "/dev/ttyACM0"
+else:
+    serial_port = None
+
+serial_server = None
+if serial_port:
+    try:
+        serial_server = serial.Serial(serial_port, 115200)
+        if serial_server.is_open:
+            print(f"Serial communication is open. ({serial_port})")
+        else:
+            print("Failed to open serial communication.")
+    except serial.SerialException as e:
+        print(f"Serial communication error: {e}")
+        serial_server = None
 
 # # TCP/IP 소켓 통신 초기화
 # try:
@@ -60,51 +69,63 @@ except serial.SerialException as e:
 #     tcp_server = None
 
 
-# ArUco 마커 설정(os에 따라 다르게 설정)
-if current_platform == 'Windows':
+# ArUco 마커 설정 (OpenCV 버전별 분기)
+cv_version = cv.__version__.split(".")
+if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters_create()
+else:
     marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
     param_markers = cv.aruco.DetectorParameters()
-elif current_platform == 'Linux':
-    marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
-    param_markers = aruco.DetectorParameters_create()
 
-# 카메라 초기화 (os에 따라 다르게 설정)
+# 카메라 초기화 (플랫폼별 백엔드 설정)
 if current_platform == 'Windows':
     cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)  # Windows는 DirectShow 사용
+    cap_back = cv.VideoCapture(1, cv.CAP_DSHOW)   # 후방 카메라도 DirectShow
 elif current_platform == 'Linux':
-    cap_front = cv.VideoCapture(0)               # Linux는 백엔드 지정 없이 사용
+    cap_front = cv.VideoCapture(0, cv.CAP_V4L2)   # Linux는 V4L2 사용
+    cap_back = cv.VideoCapture(1, cv.CAP_V4L2)    # 후방 카메라도 V4L2
 
-print(1)
+print("카메라 설정 중...")
+# 전방 카메라 설정
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-print(2)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-print(3)
 cap_front.set(cv.CAP_PROP_FPS, 30)
-print(4)
 
+# 후방 카메라 설정
+cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+cap_back.set(cv.CAP_PROP_FPS, 30)
 
+# 카메라 연결 확인 (타임아웃 추가)
+print("카메라 연결 확인 중...")
 
-# cap_back = cv.VideoCapture(1)  # 후방 카메라
-# print(1)
-# cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-# print(2)
-# cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-# print(3)
-# cap_back.set(cv.CAP_PROP_FPS, 30)
-# print(4)
-
-# 카메라 연결 확인
-while not cap_front.isOpened():
+# 전방 카메라 확인
+front_timeout = 0
+while not cap_front.isOpened() and front_timeout < 10:  # 10초 타임아웃
     print("waiting for front camera")
     time.sleep(1)
+    front_timeout += 1
 
-print("front camera is opened")
+if cap_front.isOpened():
+    print("✅ front camera is opened")
+else:
+    print("❌ front camera 열기 실패 - 프로그램 종료")
+    exit(1)
 
-# while not cap_back.isOpened():
-#     print("waiting for back camera")
-#     time.sleep(1)
+# 후방 카메라 확인
+back_timeout = 0
+while not cap_back.isOpened() and back_timeout < 10:  # 10초 타임아웃
+    print("waiting for back camera")
+    time.sleep(1)
+    back_timeout += 1
 
-# print("back camera is opened")
+if cap_back.isOpened():
+    print("✅ back camera is opened")
+else:
+    print("⚠️  back camera 열기 실패 - front camera만 사용")
+    cap_back.release()
+    cap_back = None
 
 return_message = b's'
 
@@ -120,41 +141,59 @@ while True:
             command = input("명령입력:")
 
             if command == "1":
-                serial_server.write(f"1".encode())
-                print("모드 1 전송")
+                if serial_server:
+                    serial_server.write(f"1".encode())
+                    print("모드 1 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "2":
-                serial_server.write(f"2".encode())
-                print("모드 2 전송")
+                if serial_server:
+                    serial_server.write(f"2".encode())
+                    print("모드 2 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "3":
-                serial_server.write(f"3".encode())
-                print("모드 3 전송")
-                # return_message = serial_server.read_until(b'\n')
-                # print(return_message.decode().strip())
+                if serial_server:
+                    serial_server.write(f"3".encode())
+                    print("모드 3 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "4":
-                serial_server.write(f"4".encode())
-                print("모드 4 전송")
-                # return_message = serial_server.read_until(b'\n')
-                # print(return_message.decode().strip())
-                
+                if serial_server:
+                    serial_server.write(f"4".encode())
+                    print("모드 4 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "5":
-                print("모드 5 전송")
-                serial_server.write(f"5".encode())
-
+                if serial_server:
+                    serial_server.write(f"5".encode())
+                    print("모드 5 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "6":
-                print("모드 6 전송")
-                serial_server.write(f"6".encode())
-
+                if serial_server:
+                    serial_server.write(f"6".encode())
+                    print("모드 6 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "7":
-                print("모드 7 전송")
-                serial_server.write(f"7".encode())
-
+                if serial_server:
+                    serial_server.write(f"7".encode())
+                    print("모드 7 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "8":
-                print("모드 8 전송")
-                serial_server.write(f"8".encode())
-
+                if serial_server:
+                    serial_server.write(f"8".encode())
+                    print("모드 8 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
             elif command == "9":
-                serial_server.write(f"9".encode())
-                print("모드 9 전송")
+                if serial_server:
+                    serial_server.write(f"9".encode())
+                    print("모드 9 전송")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
 
             elif command == "exit":
                 print("기본 모드 종료")
