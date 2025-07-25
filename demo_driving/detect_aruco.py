@@ -17,14 +17,10 @@ def start_detecting_aruco(cap, marker_dict, param_markers):
 
             gray_frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
             
-            # OpenCV 4.x 방식으로 ArUco 탐지
-            if int(cv_version[0]) >= 4:
-                detector = cv.aruco.ArucoDetector(marker_dict, param_markers)
-                marker_corners, marker_IDs, reject = detector.detectMarkers(gray_frame)
-            else:
-                marker_corners, marker_IDs, reject = aruco.detectMarkers(
-                    gray_frame, marker_dict, parameters=param_markers
-                )
+            # OpenCV 4.6.0에서는 기존 방식 사용
+            marker_corners, marker_IDs, reject = cv.aruco.detectMarkers(
+                gray_frame, marker_dict, parameters=param_markers
+            )
 
             if marker_corners:
                 for ids, corners in zip(marker_IDs, marker_corners):
