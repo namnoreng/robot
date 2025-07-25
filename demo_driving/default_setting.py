@@ -183,57 +183,85 @@ while True:
     elif mode == mode_state["auto_driving"]:
         print("코드 들어가는거 확인")
         car_number = input("주차할 차량 번호를 입력하세요: ")
-        first_marker, turning_1, secondmarker, turning_2 = find_destination.DFS(find_destination.parking_lot)  # 빈 공간 찾기 알고리즘 호출
         
-        serial_server.write(f"1".encode())
-        driving.driving(cap_front, marker_dict, param_markers, first_marker)
-        serial_server.write(f"9".encode())
-        print("first marker detected")
-        # 이 부분 딜레이가 필요할듯?
-        time.sleep(5)
+        # 카메라 매트릭스 로드
+        camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
+        dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
+        
+        first_marker, turning_1, secondmarker, turning_2 = find_destination.DFS(find_destination.parking_lot)
+        
+        # 1. 첫 번째 마커까지 직진
+        print("1. 첫 번째 마커까지 직진 시작")
+        serial_server.write(b"1")
+        driving.driving(cap_front, marker_dict, param_markers, first_marker, camera_front_matrix, dist_front_coeffs)
+        serial_server.write(b"9")
+        print("첫 번째 마커 도착")
+        time.sleep(2)
 
-        if(turning_1 == "left"):
-            serial_server.write(f"3".encode())
-            print("turning detected")
-
-        elif(turning_1 == "right"):
-            serial_server.write(f"4".encode())
-            print("turning detected")
-        # 이 명령 주고나서도 다 돌았는지 확인하기 위한 딜레이가 필요함
-
+        # 2. 좌표에 맞춰 회전
+        print("2. 첫 번째 회전 시작")
+        if turning_1 == "left":
+            serial_server.write(b"3")
+            print("좌회전")
+        elif turning_1 == "right":
+            serial_server.write(b"4")
+            print("우회전")
+        
+        # 회전 완료 신호 대기
         while True:
-            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers,first_marker,driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
-            if abs(z_angle) >= -0.5 and abs(z_angle) <= 0.5:
-                serial_server.write(f"9".encode())
-                print("turning complete")
-                time.sleep(5)
-                break
+            if serial_server.in_waiting:
+                recv = serial_server.read().decode()
+                if recv == "s":
+                    break
+        print("첫 번째 회전 완료")
         
-        serial_server.write(f"1".encode())
-        time.sleep(1)
-        driving.driving(cap_front, marker_dict, param_markers, secondmarker)
-        serial_server.write(f"9".encode())
-        print("second marker detected")
+        # 카메라 버퍼 플러시
+        driving.flush_camera(cap_front, 5)
+        time.sleep(2)
+        
+        # 3. 두 번째 마커까지 직진
+        print("3. 두 번째 마커까지 직진 시작")
+        serial_server.write(b"1")
+        driving.driving(cap_front, marker_dict, param_markers, secondmarker, camera_front_matrix, dist_front_coeffs)
+        serial_server.write(b"9")
+        print("두 번째 마커 도착")
+        time.sleep(2)
 
-        time.sleep(5)
+        # 4. 좌표에 반대로 회전 (주차 공간으로)
+        print("4. 주차를 위한 회전 시작")
         if turning_2 == "left":
-            serial_server.write(f"4".encode())
+            serial_server.write(b"3")  # 주차 시 같은 방향
+            print("주차용 좌회전")
         elif turning_2 == "right":
-            serial_server.write(f"3".encode())
+            serial_server.write(b"4")  # 주차 시 같은 방향
+            print("주차용 우회전")
         
+        # 회전 완료 신호 대기
         while True:
-            _, (_,_,z_angle),(_,_) = detect_aruco.find_aruco_info(cap_front, marker_dict, param_markers, secondmarker, driving.camera_matrix, driving.dist_coeffs, driving.marker_length)
-            if abs(z_angle) >= -1 and abs(z_angle) <= 1:
-                serial_server.write(f"9".encode())
-                print("turning complete")
-                time.sleep(5)
-                break
+            if serial_server.in_waiting:
+                recv = serial_server.read().decode()
+                if recv == "s":
+                    break
+        print("주차용 회전 완료")
+        time.sleep(2)
         
-        print("arrived at destination")
+        # 5. 후진 (주차 공간으로)
+        print("5. 후진 시작 (주차)")
+        serial_server.write(b"2")  # 후진 명령
+        time.sleep(3)  # 적절한 후진 시간 (조정 필요)
+        serial_server.write(b"9")  # 정지
+        print("후진 완료")
         
-        serial_server.write(f"9".encode())
-        # 주차하는 코드인데 일단 주석처리 동일 테스트를 하기 위함
-        # find_destination.park_car_at(find_destination.parking_lot, first_marker, turning, secondmarker, car_number)
+        # 6. 인식 후 종료 (주차 확인)
+        print("6. 주차 완료 확인 중...")
+        # 주차 완료 후 최종 마커 인식 또는 상태 확인
+        detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
+        
+        print("주차 완료!")
+        
+        # 주차 완료 후 차량 등록
+        find_destination.park_car_at(find_destination.parking_lot, first_marker, turning_1, secondmarker, turning_2, car_number)
+        print(f"차량 {car_number} 주차 등록 완료")
     
 
     elif mode == mode_state["reset_position"]:
