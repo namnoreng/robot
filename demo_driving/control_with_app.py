@@ -45,9 +45,11 @@ else:
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_front.set(cv.CAP_PROP_FPS, 30)
-cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-cap_back.set(cv.CAP_PROP_FPS, 30)
+
+if cap_back is not None:
+    cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+    cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+    cap_back.set(cv.CAP_PROP_FPS, 30)
 
 # 카메라가 열릴 때까지 대기 (타임아웃 추가)
 front_timeout = 0
@@ -76,15 +78,25 @@ else:
 
 # npy 파일 불러오기
 camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
-camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
 dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
-dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
 
 # 보정 행렬과 왜곡 계수를 불러옵니다.
 print("Loaded front camera matrix : \n", camera_front_matrix)
 print("Loaded front distortion coefficients : \n", dist_front_coeffs)
-print("Loaded back camera matrix : \n", camera_back_matrix)
-print("Loaded back distortion coefficients : \n", dist_back_coeffs)
+
+# back camera 파일이 있는 경우만 로드
+camera_back_matrix = None
+dist_back_coeffs = None
+if cap_back is not None:
+    try:
+        camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
+        dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
+        print("Loaded back camera matrix : \n", camera_back_matrix)
+        print("Loaded back distortion coefficients : \n", dist_back_coeffs)
+    except FileNotFoundError:
+        print("⚠️  back camera 보정 파일을 찾을 수 없습니다.")
+        cap_back.release()
+        cap_back = None
 
 # OpenCV 버전에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv.__version__.split(".")
