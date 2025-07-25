@@ -24,7 +24,7 @@ def test_aruco_simple():
             return False
         
         try:
-            parameters = cv.aruco.DetectorParameters()
+            parameters = cv.aruco.DetectorParameters_create()
             print("ArUco 파라미터 생성 성공")
         except Exception as e:
             print(f"ArUco 파라미터 생성 실패: {e}")
