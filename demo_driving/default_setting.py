@@ -69,19 +69,13 @@ if serial_port:
 #     tcp_server = None
 
 
-# ArUco 마커 설정 (OpenCV 버전별 분기)
+# ArUco 마커 설정 (레거시 방식 사용)
 print(f"Using OpenCV {cv.__version__}")
-cv_version = cv.__version__.split(".")
-if int(cv_version[0]) >= 4:
-    # OpenCV 4.x 이상
-    marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
-    param_markers = cv.aruco.DetectorParameters()
-else:
-    # OpenCV 3.x 이하
-    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
-    param_markers = aruco.DetectorParameters_create()
+# 테스트 결과에 따라 레거시 DetectorParameters_create() 사용
+marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
+param_markers = aruco.DetectorParameters_create()  # 레거시 방식 - 크래시 방지
 
-print("ArUco 설정 완료")
+print("ArUco 설정 완료 (레거시 DetectorParameters_create() 사용)")
 
 # 카메라 초기화 (플랫폼별 백엔드 설정)
 if current_platform == 'Windows':
