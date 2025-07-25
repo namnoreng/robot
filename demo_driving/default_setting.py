@@ -5,11 +5,11 @@ import serial
 import socket
 import time
 import platform
-# ArUco import 제거 (segmentation fault 방지)
+from cv2 import aruco
 
 # 다른 모듈 불러오기
 import find_destination
-import detect_aruco_safe as detect_aruco  # 안전한 마커 탐지 시스템 사용
+import detect_aruco
 import driving
 
 current_platform = platform.system()
@@ -69,15 +69,19 @@ if serial_port:
 #     tcp_server = None
 
 
-# 색상 마커 시스템 설정 (ArUco 대체)
+# ArUco 마커 설정 (OpenCV 버전별 분기)
 print(f"Using OpenCV {cv.__version__}")
-print("색상 마커 탐지 시스템 사용 (ArUco 대체)")
+cv_version = cv.__version__.split(".")
+if int(cv_version[0]) >= 4:
+    # OpenCV 4.x 이상
+    marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
+    param_markers = cv.aruco.DetectorParameters()
+else:
+    # OpenCV 3.x 이하
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters_create()
 
-# 더미 변수 (기존 코드 호환성)
-marker_dict = None
-param_markers = None
-
-print("마커 탐지 시스템 설정 완료")
+print("ArUco 설정 완료")
 
 # 카메라 초기화 (플랫폼별 백엔드 설정)
 if current_platform == 'Windows':
@@ -213,8 +217,8 @@ while True:
         find_destination.find_car(find_destination.parking_lot, car_number)
 
     elif mode == mode_state["detect_aruco"]:
-        # 색상 마커 인식 모드 (ArUco 대체)
-        detect_aruco.start_detecting_aruco()
+        # 아르코 마커 인식 모드
+        detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
 
     elif mode == mode_state["driving"]:
         # 주행모드
@@ -295,7 +299,7 @@ while True:
         # 6. 인식 후 종료 (주차 확인)
         print("6. 주차 완료 확인 중...")
         # 주차 완료 후 최종 마커 인식 또는 상태 확인
-        detect_aruco.start_detecting_aruco()
+        detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
         
         print("주차 완료!")
         
