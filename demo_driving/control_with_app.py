@@ -39,8 +39,9 @@ if current_platform == "Windows":
     cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)
     cap_back = cv.VideoCapture(1, cv.CAP_DSHOW)
 else:
-    cap_front = cv.VideoCapture(0)
-    cap_back = cv.VideoCapture(1)
+    # Jetson Nano에서 V4L2 백엔드 사용
+    cap_front = cv.VideoCapture(0, cv.CAP_V4L2)
+    cap_back = cv.VideoCapture(1, cv.CAP_V4L2)
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_front.set(cv.CAP_PROP_FPS, 30)
@@ -48,16 +49,30 @@ cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_back.set(cv.CAP_PROP_FPS, 30)
 
-# 카메라가 열릴 때까지 대기
-while not cap_front.isOpened():
+# 카메라가 열릴 때까지 대기 (타임아웃 추가)
+front_timeout = 0
+while not cap_front.isOpened() and front_timeout < 10:  # 10초 타임아웃
     print("waiting for front camera")
     time.sleep(1)
-print("front camera is opened")
+    front_timeout += 1
 
-while not cap_back.isOpened():
+if cap_front.isOpened():
+    print("front camera is opened")
+else:
+    print("❌ front camera 열기 실패 - 프로그램 종료")
+    exit(1)
+
+back_timeout = 0
+while not cap_back.isOpened() and back_timeout < 10:  # 10초 타임아웃
     print("waiting for back camera")
     time.sleep(1)
-print("back camera is opened")
+    back_timeout += 1
+
+if cap_back.isOpened():
+    print("back camera is opened")
+else:
+    print("⚠️  back camera 열기 실패 - front camera만 사용")
+    cap_back = None
 
 # npy 파일 불러오기
 camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
