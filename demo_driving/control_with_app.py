@@ -220,7 +220,7 @@ try:
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 if cap_back is not None and camera_back_matrix is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=1, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 else:
                     print("[Client] 뒤 카메라를 사용할 수 없습니다. 후진만 수행합니다.")
                     time.sleep(2)  # 후진 시간
