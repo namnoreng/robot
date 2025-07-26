@@ -141,6 +141,23 @@ try:
                 # 예시: auto driving 모드처럼 직접 명령 조합
                 print(f"[Client] 목적지: {sector}, {side}, {subzone}, {direction}, {car_number}")
 
+                # 입차 시작: 차량 들어올리기 동작
+                print("[Client] 차량 들어올리기 시작...")
+                if serial_server is not None:
+                    serial_server.write(b"7")  # 차량 들어올리기 명령
+                    print("[Client] 들어올리기 완료 신호('a') 대기 중...")
+                    
+                    # STM32로부터 'a' 신호 대기
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            if recv == "a":
+                                print("[Client] 차량 들어올리기 완료!")
+                                break
+                else:
+                    print("[Client] 시리얼 통신이 연결되지 않았습니다.")
+                    time.sleep(2)  # 시리얼이 없으면 2초 대기
+
                 # 예시: 첫 번째 마커까지 직진
                 if serial_server is not None:
                     serial_server.write(b"1")
