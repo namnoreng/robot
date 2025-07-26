@@ -251,6 +251,17 @@ try:
                 
                 time.sleep(1)  # 안정화 대기
                 
+                # 주차공간 도착 후 차량 내려놓기
+                print("[Client] 차량 내려놓기 시작...")
+                if serial_server is not None:
+                    serial_server.write(b"8")  # 차량 내려놓기 명령
+                    print("[Client] 차량 내려놓기 동작 중...")
+                    time.sleep(3)  # 3초간 내려놓기 동작 대기
+                    print("[Client] 차량 내려놓기 완료!")
+                else:
+                    print("[Client] 시리얼 통신이 연결되지 않았습니다.")
+                    time.sleep(3)  # 시리얼이 없어도 3초 대기
+                
                 # 주차 완료 신호를 서버에 전송
                 print(f"[Client] 주차 완료: {sector},{side},{subzone},{direction},{car_number}")
                 client_socket.sendall(f"DONE,{sector},{side},{subzone},{direction},{car_number}\n".encode())
