@@ -142,61 +142,96 @@ try:
                 print(f"[Client] 목적지: {sector}, {side}, {subzone}, {direction}, {car_number}")
 
                 # 예시: 첫 번째 마커까지 직진
-                serial_server.write(b"1")
+                if serial_server is not None:
+                    serial_server.write(b"1")
+                else:
+                    print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
-                serial_server.write(b"9")
+                if serial_server is not None:
+                    serial_server.write(b"9")
                 time.sleep(2)
 
                 # 방향에 따라 회전
                 if side == "left":
-                    serial_server.write(b"3")
-                    # 회전 완료 신호(s) 대기
-                    while True:
-                        if serial_server.in_waiting:
-                            recv = serial_server.read().decode()
-                            if recv == "s":
-                                break
+                    if serial_server is not None:
+                        serial_server.write(b"3")
+                        # 회전 완료 신호(s) 대기
+                        while True:
+                            if serial_server.in_waiting:
+                                recv = serial_server.read().decode()
+                                if recv == "s":
+                                    break
+                    else:
+                        print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 elif side == "right":
-                    serial_server.write(b"4")
-                    while True:
-                        if serial_server.in_waiting:
-                            recv = serial_server.read().decode()
-                            if recv == "s":
-                                break
+                    if serial_server is not None:
+                        serial_server.write(b"4")
+                        while True:
+                            if serial_server.in_waiting:
+                                recv = serial_server.read().decode()
+                                if recv == "s":
+                                    break
+                    else:
+                        print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("sector 회전 완료 ")
                 driving.flush_camera(cap_front, 5)  # 카메라 플러시
                 time.sleep(2)
-                serial_server.write(b"9")
+                if serial_server is not None:
+                    serial_server.write(b"9")
 
-                serial_server.write(b"1")
+                if serial_server is not None:
+                    serial_server.write(b"1")
+                else:
+                    print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
-                serial_server.write(b"9")
+                if serial_server is not None:
+                    serial_server.write(b"9")
                 time.sleep(2)
 
                 # 방향에 따라 회전
                 if direction == "left":
-                    serial_server.write(b"4")
-                    while True:
-                        if serial_server.in_waiting:
-                            recv = serial_server.read().decode()
-                            if recv == "s":
-                                break
+                    if serial_server is not None:
+                        serial_server.write(b"4")
+                        while True:
+                            if serial_server.in_waiting:
+                                recv = serial_server.read().decode()
+                                if recv == "s":
+                                    break
+                    else:
+                        print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 elif direction == "right":
-                    serial_server.write(b"3")
-                    while True:
-                        if serial_server.in_waiting:
-                            recv = serial_server.read().decode()
-                            if recv == "s":
-                                break
+                    if serial_server is not None:
+                        serial_server.write(b"3")
+                        while True:
+                            if serial_server.in_waiting:
+                                recv = serial_server.read().decode()
+                                if recv == "s":
+                                    break
+                    else:
+                        print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("subzone 회전 완료")
                 driving.flush_camera(cap_front, 5)  # 카메라 플러시
                 time.sleep(2)
-                serial_server.write(b"9")
+                if serial_server is not None:
+                    serial_server.write(b"9")
 
-                serial_server.write(b"2")
-                driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
-                serial_server.write(b"9")
+                if serial_server is not None:
+                    serial_server.write(b"2")
+                else:
+                    print("[Client] 시리얼 통신이 연결되지 않았습니다.")
+                if cap_back is not None and camera_back_matrix is not None:
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                else:
+                    print("[Client] 뒤 카메라를 사용할 수 없습니다. 후진만 수행합니다.")
+                    time.sleep(2)  # 후진 시간
+                if serial_server is not None:
+                    serial_server.write(b"9")
                 time.sleep(2)
+                
+                # 주차 완료 신호를 서버에 전송
+                print(f"[Client] 주차 완료: {sector},{side},{subzone},{direction},{car_number}")
+                client_socket.sendall(f"DONE,{sector},{side},{subzone},{direction},{car_number}\n".encode())
+                
                 # 필요하다면 추가 주행/회전/정지 등 구현
 
                 client_socket.sendall(b"OK: PARK command received\n")
@@ -215,7 +250,10 @@ try:
         elif command == "auto_driving":
             client_socket.sendall(b"OK: auto_driving\n")
         elif command == "reset_position":
-            driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+            if serial_server is not None:
+                driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+            else:
+                print("[Client] 시리얼 통신이 연결되지 않아 초기화를 수행할 수 없습니다.")
             client_socket.sendall(b"OK: reset_position\n")
         elif command == "stop":
             client_socket.sendall(b"OK: stop\n")
@@ -225,8 +263,11 @@ try:
             # 앞/뒤 카메라 각각 테스트
             print("[Client] front camera test")
             detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
-            print("[Client] back camera test")
-            detect_aruco.start_detecting_aruco(cap_back, marker_dict, param_markers)
+            if cap_back is not None:
+                print("[Client] back camera test")
+                detect_aruco.start_detecting_aruco(cap_back, marker_dict, param_markers)
+            else:
+                print("[Client] back camera는 사용할 수 없습니다.")
             client_socket.sendall(b"OK: camera_test\n")
         else:
             client_socket.sendall(b"Unknown command\n")
