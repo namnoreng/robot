@@ -105,7 +105,7 @@ if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
     param_markers = aruco.DetectorParameters_create()
 else:
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
-    param_markers = aruco.DetectorParameters()
+    param_markers = aruco.DetectorParameters_create()
 
 # 클라이언트 소켓 초기화 (서버에 접속)
 host_input = input("Enter server IP (default: 127.0.0.1): ").strip()
