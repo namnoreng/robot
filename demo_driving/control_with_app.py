@@ -39,37 +39,64 @@ if current_platform == "Windows":
     cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)
     cap_back = cv.VideoCapture(1, cv.CAP_DSHOW)
 else:
-    cap_front = cv.VideoCapture(0)
-    cap_back = cv.VideoCapture(1)
+    # Jetson Nano에서 V4L2 백엔드 사용
+    cap_front = cv.VideoCapture(0, cv.CAP_V4L2)
+    cap_back = cv.VideoCapture(1, cv.CAP_V4L2)
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_front.set(cv.CAP_PROP_FPS, 30)
-cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-cap_back.set(cv.CAP_PROP_FPS, 30)
 
-# 카메라가 열릴 때까지 대기
-while not cap_front.isOpened():
+if cap_back is not None:
+    cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+    cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+    cap_back.set(cv.CAP_PROP_FPS, 30)
+
+# 카메라가 열릴 때까지 대기 (타임아웃 추가)
+front_timeout = 0
+while not cap_front.isOpened() and front_timeout < 10:  # 10초 타임아웃
     print("waiting for front camera")
     time.sleep(1)
-print("front camera is opened")
+    front_timeout += 1
 
-while not cap_back.isOpened():
+if cap_front.isOpened():
+    print("front camera is opened")
+else:
+    print("❌ front camera 열기 실패 - 프로그램 종료")
+    exit(1)
+
+back_timeout = 0
+while not cap_back.isOpened() and back_timeout < 10:  # 10초 타임아웃
     print("waiting for back camera")
     time.sleep(1)
-print("back camera is opened")
+    back_timeout += 1
+
+if cap_back.isOpened():
+    print("back camera is opened")
+else:
+    print("⚠️  back camera 열기 실패 - front camera만 사용")
+    cap_back = None
 
 # npy 파일 불러오기
 camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
-camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
 dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
-dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
 
 # 보정 행렬과 왜곡 계수를 불러옵니다.
 print("Loaded front camera matrix : \n", camera_front_matrix)
 print("Loaded front distortion coefficients : \n", dist_front_coeffs)
-print("Loaded back camera matrix : \n", camera_back_matrix)
-print("Loaded back distortion coefficients : \n", dist_back_coeffs)
+
+# back camera 파일이 있는 경우만 로드
+camera_back_matrix = None
+dist_back_coeffs = None
+if cap_back is not None:
+    try:
+        camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
+        dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
+        print("Loaded back camera matrix : \n", camera_back_matrix)
+        print("Loaded back distortion coefficients : \n", dist_back_coeffs)
+    except FileNotFoundError:
+        print("⚠️  back camera 보정 파일을 찾을 수 없습니다.")
+        cap_back.release()
+        cap_back = None
 
 # OpenCV 버전에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv.__version__.split(".")
