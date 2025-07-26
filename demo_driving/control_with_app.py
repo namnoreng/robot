@@ -157,7 +157,12 @@ try:
                     
                     # 들어올리기 완료 후 정지 및 안정화
                     serial_server.write(b"9")  # 정지 명령
-                    time.sleep(1)  # 1초 안정화 대기
+                    time.sleep(3)  # 3초 안정화 대기 (늘림)
+                    
+                    # 시리얼 버퍼 클리어
+                    serial_server.reset_input_buffer()
+                    serial_server.reset_output_buffer()
+                    
                     print("[Client] 시스템 안정화 완료, 주행 시작")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
