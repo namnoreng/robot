@@ -175,9 +175,10 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
 
 def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters, 
                            camera_front_matrix, dist_front_coeffs,
-                           camera_back_matrix, dist_back_coeffs, serial_server):
+                           camera_back_matrix, dist_back_coeffs, serial_server,
+                           back_marker_id=1, front_marker_id=2):
     """
-    복합 후진 제어: 후방카메라 마커1 인식 + 전방카메라 마커2 실시간 중앙정렬
+    복합 후진 제어: 후방카메라 마커 인식 + 전방카메라 마커 실시간 중앙정렬
     
     Args:
         cap_front: 전방 카메라
@@ -189,8 +190,10 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
         camera_back_matrix: 후방 카메라 매트릭스  
         dist_back_coeffs: 후방 카메라 왜곡 계수
         serial_server: 시리얼 통신 객체
+        back_marker_id: 후방 카메라로 인식할 마커 번호 (기본값: 1)
+        front_marker_id: 전방 카메라로 중앙정렬할 마커 번호 (기본값: 2)
     """
-    print("[Driving] 복합 후진 제어 시작 (후방: 마커1 인식, 전방: 마커2 실시간 중앙정렬)")
+    print(f"[Driving] 복합 후진 제어 시작 (후방: 마커{back_marker_id} 인식, 전방: 마커{front_marker_id} 실시간 중앙정렬)")
     
     if serial_server is not None:
         serial_server.write(b"2")  # 후진 시작
@@ -200,50 +203,50 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
 
     FRAME_CENTER_X = 640  # 1280x720 해상도 기준 중앙
     CENTER_TOLERANCE = 30  # 중앙 허용 오차 (픽셀) - 정밀하게
-    TARGET_DISTANCE = 0.3  # 후방 마커1 목표 거리 (30cm)
+    TARGET_DISTANCE = 0.3  # 후방 마커 목표 거리 (30cm)
     
     current_movement = None  # 현재 이동 상태 추적 ('left', 'right', 'backward', None)
 
     try:
         while True:
-            # 후방카메라로 마커 1 체크 (주 조건)
+            # 후방카메라로 지정된 마커 체크 (주 조건)
             back_marker_found = False
             if cap_back is not None and camera_back_matrix is not None:
                 ret_back, frame_back = cap_back.read()
                 if ret_back:
                     back_distance, _, _ = find_aruco_info(
-                        frame_back, aruco_dict, parameters, 1, 
+                        frame_back, aruco_dict, parameters, back_marker_id, 
                         camera_back_matrix, dist_back_coeffs, marker_length
                     )
                     if back_distance is not None:
-                        print(f"[Driving] 후방 마커1 감지: {back_distance:.3f}m")
+                        print(f"[Driving] 후방 마커{back_marker_id} 감지: {back_distance:.3f}m")
                         if back_distance < TARGET_DISTANCE:
                             back_marker_found = True
             
-            # 전방카메라로 마커 2 실시간 중앙정렬
+            # 전방카메라로 지정된 마커 실시간 중앙정렬
             target_movement = 'backward'  # 기본값은 후진
             if cap_front is not None:
                 ret_front, frame_front = cap_front.read()
                 if ret_front:
-                    # 마커 2 탐지 및 중앙정렬
+                    # 지정된 마커 탐지 및 중앙정렬
                     gray_front = cv2.cvtColor(frame_front, cv2.COLOR_BGR2GRAY)
                     corners, ids, _ = cv2.aruco.detectMarkers(gray_front, aruco_dict, parameters=parameters)
                     
                     if ids is not None:
-                        marker_2_centers = []
+                        marker_centers = []
                         for i, marker_id in enumerate(ids):
-                            if marker_id[0] == 2:  # 마커 2만 처리
+                            if marker_id[0] == front_marker_id:  # 지정된 마커만 처리
                                 # 마커 중심 계산
                                 c = corners[i].reshape(4, 2)
                                 center_x = int(np.mean(c[:, 0]))
-                                marker_2_centers.append(center_x)
+                                marker_centers.append(center_x)
                         
-                        if marker_2_centers:
+                        if marker_centers:
                             # 여러 마커가 있으면 평균 중심 계산
-                            avg_center_x = np.mean(marker_2_centers)
+                            avg_center_x = np.mean(marker_centers)
                             dx = avg_center_x - FRAME_CENTER_X
                             
-                            print(f"[Driving] 전방 마커2 개수: {len(marker_2_centers)}, 평균중심: {avg_center_x:.1f}, 오차: {dx:.1f}")
+                            print(f"[Driving] 전방 마커{front_marker_id} 개수: {len(marker_centers)}, 평균중심: {avg_center_x:.1f}, 오차: {dx:.1f}")
                             
                             # 중앙정렬이 필요한 경우만 좌우 이동
                             if abs(dx) > CENTER_TOLERANCE:
@@ -253,21 +256,21 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
                                     target_movement = 'left'
                             else:
                                 # 중앙에 정렬됨 - 후진만 진행
-                                print(f"[Driving] 마커2 중앙 정렬됨 (오차: {dx:.1f}px)")
+                                print(f"[Driving] 마커{front_marker_id} 중앙 정렬됨 (오차: {dx:.1f}px)")
             
-            # 메인 종료 조건: 후방 마커1이 충분히 가까워졌을 때
+            # 메인 종료 조건: 후방 마커가 충분히 가까워졌을 때
             if back_marker_found:
-                print("[Driving] 후방 마커1에 충분히 접근 - 후진 완료")
+                print(f"[Driving] 후방 마커{back_marker_id}에 충분히 접근 - 후진 완료")
                 break
             
             # 시리얼 명령 실행 (이전 동작과 다를 때만)
             if target_movement != current_movement and serial_server is not None:
                 if target_movement == 'left':
-                    print("[Driving] 왼쪽으로 이동 (마커2 중앙정렬)")
+                    print(f"[Driving] 왼쪽으로 이동 (마커{front_marker_id} 중앙정렬)")
                     serial_server.write(b"5")
                     current_movement = 'left'
                 elif target_movement == 'right':
-                    print("[Driving] 오른쪽으로 이동 (마커2 중앙정렬)")
+                    print(f"[Driving] 오른쪽으로 이동 (마커{front_marker_id} 중앙정렬)")
                     serial_server.write(b"6")
                     current_movement = 'right'
                 elif target_movement == 'backward':
