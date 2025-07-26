@@ -177,8 +177,52 @@ while True:
         detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
 
     elif mode == mode_state["driving"]:
-        # 주행모드
-        driving.driving(cap_front, marker_dict, param_markers, marker_index = 1)
+        # 거리 측정 모드
+        marker_id = int(input("측정할 마커 ID를 입력하세요: "))
+        
+        # 카메라 매트릭스 로드
+        try:
+            camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
+            dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
+            marker_length = 0.05  # 마커 크기 (미터)
+            
+            print(f"마커 ID {marker_id}와의 거리 측정 중... (ESC로 종료)")
+            
+            while True:
+                ret, frame = cap_front.read()
+                if not ret:
+                    break
+                
+                # driving.py의 find_aruco_info 함수 사용
+                distance, (x_angle, y_angle, z_angle), (center_x, center_y) = driving.find_aruco_info(
+                    frame, marker_dict, param_markers, marker_id, 
+                    camera_front_matrix, dist_front_coeffs, marker_length
+                )
+                
+                if distance is not None:
+                    # 화면에 거리 정보 표시
+                    cv.putText(frame, f"Distance: {distance:.3f}m", 
+                              (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    cv.putText(frame, f"Marker ID: {marker_id}", 
+                              (10, 70), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+                    cv.putText(frame, f"Angle Z: {z_angle:.1f} deg", 
+                              (10, 110), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    
+                    print(f"마커 {marker_id} 거리: {distance:.3f}m, Z각도: {z_angle:.1f}도")
+                else:
+                    cv.putText(frame, "Marker not found", 
+                              (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                
+                cv.imshow("Distance Measurement", frame)
+                
+                key = cv.waitKey(1) & 0xFF
+                if key == 27:  # ESC
+                    break
+            
+            cv.destroyAllWindows()
+                
+        except Exception as e:
+            print(f"오류 발생: {e}")
 
     elif mode == mode_state["auto_driving"]:
         print("코드 들어가는거 확인")
