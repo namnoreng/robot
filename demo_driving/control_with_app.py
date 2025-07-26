@@ -215,18 +215,24 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")
 
-                if serial_server is not None:
-                    serial_server.write(b"2")
+                # 복합 후진 제어 함수 호출
+                success = driving.advanced_parking_control(
+                    cap_front, cap_back, marker_dict, param_markers,
+                    camera_front_matrix, dist_front_coeffs,
+                    camera_back_matrix, dist_back_coeffs, serial_server
+                )
+                
+                if success:
+                    print("[Client] 복합 후진 제어 성공")
                 else:
-                    print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                if cap_back is not None and camera_back_matrix is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=1, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
-                else:
-                    print("[Client] 뒤 카메라를 사용할 수 없습니다. 후진만 수행합니다.")
-                    time.sleep(2)  # 후진 시간
-                if serial_server is not None:
-                    serial_server.write(b"9")
-                time.sleep(2)
+                    print("[Client] 복합 후진 제어 실패 - 기본 후진으로 대체")
+                    # 실패 시 기본 후진
+                    if serial_server is not None:
+                        serial_server.write(b"2")
+                        time.sleep(2)  # 2초간 후진
+                        serial_server.write(b"9")
+                
+                time.sleep(1)  # 안정화 대기
                 
                 # 주차 완료 신호를 서버에 전송
                 print(f"[Client] 주차 완료: {sector},{side},{subzone},{direction},{car_number}")
