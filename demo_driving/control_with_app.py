@@ -154,11 +154,17 @@ try:
                             if recv == "a":
                                 print("[Client] 차량 들어올리기 완료!")
                                 break
+                    
+                    # 들어올리기 완료 후 정지 및 안정화
+                    serial_server.write(b"9")  # 정지 명령
+                    time.sleep(1)  # 1초 안정화 대기
+                    print("[Client] 시스템 안정화 완료, 주행 시작")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                    time.sleep(2)  # 시리얼이 없으면 2초 대기
+                    time.sleep(3)  # 시리얼이 없으면 3초 대기
 
                 # 예시: 첫 번째 마커까지 직진
+                print("[Client] 첫 번째 마커로 직진 시작")
                 if serial_server is not None:
                     serial_server.write(b"1")
                 else:
