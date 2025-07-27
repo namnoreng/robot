@@ -193,7 +193,7 @@ try:
                     serial_server.write(b"1")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.35)
                 
                 # 마커 인식 후 정지
                 client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
@@ -241,6 +241,9 @@ try:
                 print("[Client] subzone 도착 신호 전송")
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
                 time.sleep(2)
+
+                # subzone 도착 후 로봇 초기화
+                driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
 
                 # 방향에 따라 회전
                 if direction == "left":
