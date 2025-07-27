@@ -382,7 +382,7 @@ try:
                 print("[Client] 주차 공간에서 탈출 중... (마커 0번과의 거리가 0.3m 이상이 될 때까지)")
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진 시작
-                    time.sleep(5)  # 안정화 대기
+                    time.sleep(3)  # 안정화 대기
                 # 새로운 탈출 함수 사용 - 마커 0번과의 거리가 0.3m 이상이 될 때까지
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.3)
                 
@@ -418,10 +418,10 @@ try:
                     serial_server.write(b"2")  # 후진 시작
                 # 뒷카메라로 마커 0번 인식
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.4)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.5)
                 else:
                     print("[Client] 뒷카메라가 없어 전방카메라로 대체")
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)               
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.5)               
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode()) # sector 도착
