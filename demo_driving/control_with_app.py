@@ -337,6 +337,9 @@ try:
                                 break
                     time.sleep(1)
                 
+                driving.flush_camera(cap_back, 5)  # 카메라 플러시
+                driving.flush_camera(cap_front, 5)  # 카메라 플러시
+
                 # 3. 두 번째 마커로 복귀 (후진하면서 뒷카메라로 인식)
                 print("[Client] 두 번째 마커로 복귀 중... (후진, 뒷카메라 사용, 마커 0번 인식)")
                 if serial_server is not None:

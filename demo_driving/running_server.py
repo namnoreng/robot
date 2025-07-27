@@ -106,16 +106,13 @@ def handle_client(client_socket, addr):
                     result = find_destination.find_car(find_destination.parking_lot, car_number)
                     if result:
                         sector, side, subzone, direction = result
-                        # 자리 비우기
-                        find_destination.park_car_at(find_destination.parking_lot, sector, side, subzone, direction, "")
-                        print(f"[서버] 차량 {car_number}를 {sector},{side},{subzone},{direction}에서 출차")
+                        # 자리는 로봇이 OUT_DONE을 보낼 때까지 비우지 않음
+                        print(f"[서버] 차량 {car_number} 출차 요청: {sector},{side},{subzone},{direction}")
                         # 로봇에게 명령 전달 예시
                         if 1 in robot_clients:
                             robot_addr = robot_clients[1]
                             robot_sock = clients[robot_addr][0]
                             robot_sock.sendall(f"OUT,{sector},{side},{subzone},{direction},{car_number}\n".encode())
-                        # 차량 출차 정보 저장
-                        save_parking_status(export_parking_status())
                     else:
                         print(f"[서버] 차량 {car_number}의 위치를 찾을 수 없습니다.")
                 else:
@@ -139,6 +136,10 @@ def handle_client(client_socket, addr):
                     try:
                         # 출차 완료: OUT_DONE,1,left,1,left,1111
                         _, sector, side, subzone, direction, car_number = msg.split(",")
+                        # 실제로 자리 비우기 (로봇이 출차 완료했으므로)
+                        find_destination.park_car_at(find_destination.parking_lot, sector, side, subzone, direction, "")
+                        print(f"[서버] 차량 {car_number}를 {sector},{side},{subzone},{direction}에서 출차 완료")
+                        
                         android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
                         # lifted 메시지 앱에 전송
                         if 1 in app_clients:
@@ -146,6 +147,9 @@ def handle_client(client_socket, addr):
                             app_sock = clients[app_addr][0]
                             app_sock.sendall(f"lifted,{android_format},{car_number}\n".encode())
                             print(f"[서버] lifted,{android_format},{car_number} → 앱에 전송")
+                        
+                        # 출차 완료 후 주차장 상태 저장
+                        save_parking_status(export_parking_status())
                     except Exception as e:
                         print(f"[서버] OUT_DONE 메시지 파싱 오류: {e}")
                 elif msg.startswith("COMPLETE") or msg.startswith("done"):
@@ -279,13 +283,12 @@ def command_mode():
                         result = find_destination.find_car(find_destination.parking_lot, car_number)
                         if result:
                             sector, side, subzone, direction = result
-                            find_destination.park_car_at(find_destination.parking_lot, sector, side, subzone, direction, "")
-                            print(f"[서버] 차량 {car_number}를 {sector},{side},{subzone},{direction}에서 출차")
+                            # 자리는 로봇이 OUT_DONE을 보낼 때까지 비우지 않음
+                            print(f"[서버] 차량 {car_number} 출차 요청: {sector},{side},{subzone},{direction}")
                             if 1 in robot_clients:
                                 robot_addr = robot_clients[1]
                                 robot_sock = clients[robot_addr][0]
                                 robot_sock.sendall(f"OUT,{sector},{side},{subzone},{direction},{car_number}\n".encode())
-                            save_parking_status(export_parking_status())
                         else:
                             print(f"[서버] 차량 {car_number}의 위치를 찾을 수 없습니다.")
                     else:
