@@ -11,6 +11,45 @@ from cv2 import aruco
 import driving
 import detect_aruco
 
+def configure_camera_manual_settings(cap, camera_name="Camera", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0):
+    """
+    카메라의 자동 기능을 비활성화하고 수동 설정을 적용하는 함수
+    
+    Parameters:
+    - cap: cv2.VideoCapture 객체
+    - camera_name: 카메라 이름 (로그용)
+    - exposure: 노출 값 (-13 ~ -1, 낮을수록 어두움)
+    - wb_temp: 화이트 밸런스 온도 (2800~6500K)
+    - brightness: 밝기 (0~255)
+    - contrast: 대비 (0~255)
+    - saturation: 채도 (0~255)
+    - gain: 게인 (0~255, 낮을수록 노이즈 적음)
+    """
+    print(f"=== {camera_name} 수동 설정 적용 ===")
+    
+    # 자동 기능 비활성화
+    cap.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25)  # 자동 노출 비활성화 (수동 모드)
+    cap.set(cv.CAP_PROP_AUTO_WB, 0)           # 자동 화이트 밸런스 비활성화
+    
+    # 수동 값 설정
+    cap.set(cv.CAP_PROP_EXPOSURE, exposure)
+    cap.set(cv.CAP_PROP_WB_TEMPERATURE, wb_temp)
+    cap.set(cv.CAP_PROP_BRIGHTNESS, brightness)
+    cap.set(cv.CAP_PROP_CONTRAST, contrast)
+    cap.set(cv.CAP_PROP_SATURATION, saturation)
+    cap.set(cv.CAP_PROP_GAIN, gain)
+    
+    # 설정 확인
+    print(f"자동노출: {cap.get(cv.CAP_PROP_AUTO_EXPOSURE)} (0.25=수동)")
+    print(f"노출값: {cap.get(cv.CAP_PROP_EXPOSURE)}")
+    print(f"자동WB: {cap.get(cv.CAP_PROP_AUTO_WB)} (0=비활성화)")
+    print(f"WB온도: {cap.get(cv.CAP_PROP_WB_TEMPERATURE)}K")
+    print(f"밝기: {cap.get(cv.CAP_PROP_BRIGHTNESS)}")
+    print(f"대비: {cap.get(cv.CAP_PROP_CONTRAST)}")
+    print(f"채도: {cap.get(cv.CAP_PROP_SATURATION)}")
+    print(f"게인: {cap.get(cv.CAP_PROP_GAIN)}")
+    print("=" * (len(camera_name) + 16))
+
 # 플랫폼 구분
 current_platform = platform.system()
 
@@ -58,10 +97,16 @@ cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_front.set(cv.CAP_PROP_FPS, 30)
 
+# 전방 카메라 수동 설정 적용
+configure_camera_manual_settings(cap_front, "전방 카메라", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0)
+
 if cap_back is not None:
     cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
     cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
     cap_back.set(cv.CAP_PROP_FPS, 30)
+    
+    # 후방 카메라 수동 설정 적용
+    configure_camera_manual_settings(cap_back, "후방 카메라", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0)
 
 # 카메라가 열릴 때까지 대기 (타임아웃 추가)
 front_timeout = 0
