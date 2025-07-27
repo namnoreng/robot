@@ -286,7 +286,7 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진 시작
                 # 마커 0번을 인식할 때까지 전진
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     time.sleep(1)
