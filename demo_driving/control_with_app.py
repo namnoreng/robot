@@ -340,13 +340,36 @@ try:
                 # 주차공간 도착 후 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
                 if serial_server is not None:
+                    # 8번 명령 전 버퍼 클리어 (안전장치)
+                    serial_server.reset_input_buffer()
+                    
                     serial_server.write(b"8")  # 차량 내려놓기 명령
-                    print("[Client] 차량 내려놓기 동작 중...")
-                    time.sleep(3)  # 3초간 내려놓기 동작 대기
-                    print("[Client] 차량 내려놓기 완료!")
+                    print("[Client] 내려놓기 완료 신호('c') 대기 중...")
+                    
+                    # STM32로부터 'c' 신호 대기
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            print(f"[Client] 시리얼 수신: '{recv}'")
+                            if recv == "c":
+                                print("[Client] 차량 내려놓기 완료!")
+                                break
+                            else:
+                                print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
+                        time.sleep(0.1)
+                    
+                    # 내려놓기 완료 후 정지 및 안정화
+                    serial_server.write(b"9")  # 정지 명령
+                    time.sleep(1)  # 1초 안정화 대기
+                    
+                    # 시리얼 버퍼 클리어
+                    serial_server.reset_input_buffer()
+                    serial_server.reset_output_buffer()
+                    
+                    print("[Client] 차량 내려놓기 시스템 안정화 완료")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                    time.sleep(3)  # 시리얼이 없어도 3초 대기
+                    time.sleep(3)  # 시리얼이 없으면 3초 대기
                 
                 # 주차 완료 신호를 서버에 전송
                 print(f"[Client] 주차 완료: {sector},{side},{subzone},{direction},{car_number}")
@@ -686,10 +709,36 @@ try:
                 # 6. 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
                 if serial_server is not None:
+                    # 8번 명령 전 버퍼 클리어 (안전장치)
+                    serial_server.reset_input_buffer()
+                    
                     serial_server.write(b"8")  # 차량 내려놓기 명령
-                    print("[Client] 차량 내려놓기 동작 중...")
-                    time.sleep(3)
-                    print("[Client] 차량 내려놓기 완료!")
+                    print("[Client] 내려놓기 완료 신호('c') 대기 중...")
+                    
+                    # STM32로부터 'c' 신호 대기
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            print(f"[Client] 시리얼 수신: '{recv}'")
+                            if recv == "c":
+                                print("[Client] 차량 내려놓기 완료!")
+                                break
+                            else:
+                                print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
+                        time.sleep(0.1)
+                    
+                    # 내려놓기 완료 후 정지 및 안정화
+                    serial_server.write(b"9")  # 정지 명령
+                    time.sleep(1)  # 1초 안정화 대기
+                    
+                    # 시리얼 버퍼 클리어
+                    serial_server.reset_input_buffer()
+                    serial_server.reset_output_buffer()
+                    
+                    print("[Client] 차량 내려놓기 시스템 안정화 완료")
+                else:
+                    print("[Client] 시리얼 통신이 연결되지 않았습니다.")
+                    time.sleep(3)  # 시리얼이 없으면 3초 대기
                 
                 # 출차 완료 신호를 서버에 전송
                 print(f"[Client] 출차 완료 신호 전송: {sector},{side},{subzone},{direction},{car_number}")
