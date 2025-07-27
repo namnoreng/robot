@@ -382,10 +382,9 @@ try:
                 print("[Client] 주차 공간에서 탈출 중... (마커 0번과의 거리가 0.3m 이상이 될 때까지)")
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진 시작
+                    time.sleep(2)  # 안정화 대기
                 # 새로운 탈출 함수 사용 - 마커 0번과의 거리가 0.3m 이상이 될 때까지
-                escape_success = driving.escape_from_parking(cap_back, marker_dict, param_markers, marker_index=0, 
-                                                   camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, 
-                                                   target_distance=0.3)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.3)
                 
                 # 탈출 성공
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
