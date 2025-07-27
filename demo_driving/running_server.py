@@ -39,18 +39,6 @@ for car_number, info in parking_status.items():
         info["sector"], info["side"], info["subzone"], info["direction"], car_number
     )
 
-def convert_to_android_format(sector, side, subzone):
-    sector_chr = chr(ord('a') + int(sector) - 1)
-    
-    if side == 'left':
-        side_chr = 'L'
-    elif side == 'right':
-        side_chr = 'R'
-    elif side == 'Middle':
-        side_chr = 'M'
-    subzone_chr = chr(ord('a') + int(subzone) - 1)
-    return f"{sector_chr}{side_chr}{subzone_chr}"
-
 def handle_client(client_socket, addr):
     print(f"[+] Connected by {addr}")
     try:
@@ -105,7 +93,7 @@ def handle_client(client_socket, addr):
                             robot_sock = clients[robot_addr][0]
                             robot_sock.sendall(f"PARK,{sector},{side},{subzone},{direction},{car_number}\n".encode())
                         # === 여기서 앱에 메시지 전송 ===
-                        android_format = convert_to_android_format(sector, side, subzone, direction)
+                        android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
                         if 1 in app_clients:
                             app_addr = app_clients[1]
                             app_sock = clients[app_addr][0]
@@ -138,7 +126,7 @@ def handle_client(client_socket, addr):
                 if msg.startswith("DONE"):
                     try:
                         _, sector, side, subzone, direction, car_number = msg.split(",")
-                        android_format = convert_to_android_format(sector, side, subzone, direction)
+                        android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
                         # parked 메시지 앱에 전송
                         if 1 in app_clients:
                             app_addr = app_clients[1]
@@ -147,6 +135,51 @@ def handle_client(client_socket, addr):
                             print(f"[서버] parked,{android_format},{car_number} → 앱에 전송")
                     except Exception as e:
                         print(f"[서버] DONE 메시지 파싱 오류: {e}")
+                elif msg.startswith("OUT_DONE"):
+                    try:
+                        # 출차 완료: OUT_DONE,1,left,1,left,1111
+                        _, sector, side, subzone, direction, car_number = msg.split(",")
+                        android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
+                        # lifted 메시지 앱에 전송
+                        if 1 in app_clients:
+                            app_addr = app_clients[1]
+                            app_sock = clients[app_addr][0]
+                            app_sock.sendall(f"lifted,{android_format},{car_number}\n".encode())
+                            print(f"[서버] lifted,{android_format},{car_number} → 앱에 전송")
+                    except Exception as e:
+                        print(f"[서버] OUT_DONE 메시지 파싱 오류: {e}")
+                elif msg.startswith("COMPLETE") or msg.startswith("done"):
+                    # 전체 작업 완료 (대기 위치 복귀 완료)
+                    if 1 in app_clients:
+                        app_addr = app_clients[1]
+                        app_sock = clients[app_addr][0]
+                        app_sock.sendall(f"COMPLETE\n".encode())
+                        print(f"[서버] COMPLETE → 앱에 전송")
+                elif msg.startswith("sector_arrived") or msg.startswith("subzone_arrived") or msg.startswith("starting_point"):
+                    try:
+                        # 형식: sector_arrived,1,None,None 또는 subzone_arrived,1,left,1 또는 starting_point,0,None,None
+                        parts = msg.split(",")
+                        arrival_type = parts[0]
+                        sector = int(parts[1]) if parts[1] != "None" else None
+                        side = parts[2] if parts[2] != "None" else None
+                        subzone = int(parts[3]) if parts[3] != "None" else None
+                        
+                        # find_destination의 convert_to_android_format 함수 사용
+                        if arrival_type == "starting_point":
+                            android_format = find_destination.convert_to_android_format(0, None, None)  # "waiting_point"
+                        elif arrival_type == "sector_arrived":
+                            android_format = find_destination.convert_to_android_format(sector, None, None)  # "aMM"
+                        elif arrival_type == "subzone_arrived":
+                            android_format = find_destination.convert_to_android_format(sector, side, subzone)  # "aLa"나 "aLb"
+                        
+                        # 현재 위치를 앱에 MOVE 메시지로 전송
+                        if 1 in app_clients:
+                            app_addr = app_clients[1]
+                            app_sock = clients[app_addr][0]
+                            app_sock.sendall(f"MOVE,{android_format}\n".encode())
+                            print(f"[서버] MOVE,{android_format} → 앱에 전송")
+                    except Exception as e:
+                        print(f"[서버] 위치 업데이트 메시지 파싱 오류: {e}")
                 # 필요시 다른 로봇 메시지도 처리
 
     except Exception as e:
@@ -234,7 +267,7 @@ def command_mode():
                                 robot_addr = robot_clients[1]
                                 robot_sock = clients[robot_addr][0]
                                 robot_sock.sendall(f"PARK,{sector},{side},{subzone},{direction},{car_number}\n".encode())
-                            android_format = convert_to_android_format(sector, side, subzone, direction)
+                            android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
                             if 1 in app_clients:
                                 app_addr = app_clients[1]
                                 app_sock = clients[app_addr][0]

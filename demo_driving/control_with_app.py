@@ -194,6 +194,9 @@ try:
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                
+                # 마커 인식 후 정지
+                client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
                 if serial_server is not None:
                     serial_server.write(b"9")
                 time.sleep(2)
@@ -233,6 +236,10 @@ try:
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
                 if serial_server is not None:
                     serial_server.write(b"9")
+
+                # subzone 도착 후 서버에 신호 전송
+                print("[Client] subzone 도착 신호 전송")
+                client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
                 time.sleep(2)
 
                 # 방향에 따라 회전
@@ -306,6 +313,10 @@ try:
                     serial_server.write(b"1")  # 전진 시작
                 # 마커 0번을 인식할 때까지 전진
                 driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.4)
+                
+                # 탈출 성공
+                client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
+
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     time.sleep(1)
@@ -335,9 +346,10 @@ try:
                     driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.4)
                 else:
                     print("[Client] 뒷카메라가 없어 전방카메라로 대체")
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)               
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
+                    client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode()) # sector 도착
                     time.sleep(1)
                 
                 # 4. 첫 번째 회전 방향과 반대로 회전
@@ -357,16 +369,17 @@ try:
                     time.sleep(1)
                 
                 # 5. 초기 위치로 복귀 (첫 번째 마커까지 후진하면서 뒷카메라로)
-                print("[Client] 초기 위치로 복귀 중... (후진, 뒷카메라 사용, 마커 0번 인식)")
+                print("[Client] 초기 위치로 복귀 중... (후진, 뒷카메라 사용, 마커 3번 인식)")
                 if serial_server is not None:
                     serial_server.write(b"2")  # 후진 시작
                 # 뒷카메라로 마커 3번 인식
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=3, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.4)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=3, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 else:
                     print("[Client] 뒷카메라가 없어 전방카메라로 대체")
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=3, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=3, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
+                    client_socket.sendall(f"starting_point,0,None,None\n".encode())
                     serial_server.write(b"9")  # 정지
                 
                 # 6. 최종 위치 조정 (마커 17로 이동 - 초기 대기 위치)
@@ -376,6 +389,9 @@ try:
                 
                 print("[Client] 제자리 복귀 완료!")
                 
+                # 대기 위치 복귀 완료 신호를 서버에 전송
+                client_socket.sendall(f"COMPLETE\n".encode())
+
                 # 필요하다면 추가 주행/회전/정지 등 구현
 
                 client_socket.sendall(b"OK: PARK command received\n")
@@ -444,7 +460,7 @@ try:
                 print("[Client] 첫 번째 마커로 직진 시작")
                 if serial_server is not None:
                     serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
                 time.sleep(2)
@@ -475,7 +491,7 @@ try:
                 # 두 번째 마커까지 직진
                 if serial_server is not None:
                     serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
                 time.sleep(2)
@@ -534,7 +550,7 @@ try:
                 print("[Client] 주차 공간에서 탈출 중... (마커 0번 인식까지)")
                 if serial_server is not None:
                     serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
                     time.sleep(1)
@@ -559,9 +575,9 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"2")
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.4)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 else:
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
                     time.sleep(1)
@@ -586,9 +602,9 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"2")
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=3, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.4)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=3, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 else:
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=3, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=3, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
                 
@@ -612,7 +628,7 @@ try:
                         serial_server.write(b"2")  # 후진
                     driving.driving(cap_back if cap_back is not None else cap_front, marker_dict, param_markers, marker_index=17, 
                                   camera_matrix=camera_back_matrix if cap_back is not None else camera_front_matrix, 
-                                  dist_coeffs=dist_back_coeffs if cap_back is not None else dist_front_coeffs, target_distance=0.4)
+                                  dist_coeffs=dist_back_coeffs if cap_back is not None else dist_front_coeffs)
                     if serial_server is not None:
                         serial_server.write(b"9")  # 정지
                 
@@ -624,12 +640,16 @@ try:
                     time.sleep(3)
                     print("[Client] 차량 내려놓기 완료!")
                 
+                # 출차 완료 신호를 서버에 전송
+                print(f"[Client] 출차 완료 신호 전송: {sector},{side},{subzone},{direction},{car_number}")
+                client_socket.sendall(f"OUT_DONE,{sector},{side},{subzone},{direction},{car_number}\n".encode())
+                
                 # 7. 로봇 초기 위치로 복귀 (전진)
                 print("[Client] 로봇 초기 위치로 복귀... (전진)")
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진
                 # 로봇 초기 위치까지 전진 (마커 17 인식)
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=17, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=17, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                 
@@ -639,6 +659,9 @@ try:
                     driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 
                 print(f"[Client] 출차 완료: {car_number}")
+                
+                # 대기 위치 복귀 완료 신호를 서버에 전송
+                client_socket.sendall(f"COMPLETE\n".encode())
                 
                 # 주차 상태에서 차량 정보 제거
                 try:
@@ -661,7 +684,7 @@ try:
             detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
             client_socket.sendall(b"OK: detect_aruco\n")
         elif command == "driving":
-            driving.driving(cap_front, marker_dict, param_markers, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+            driving.driving(cap_front, marker_dict, param_markers, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
             client_socket.sendall(b"OK: driving\n")
         elif command == "auto_driving":
             client_socket.sendall(b"OK: auto_driving\n")

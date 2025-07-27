@@ -17,6 +17,61 @@ class Sector:
 
 parking_lot = [Sector() for _ in range(2)]
 
+def convert_to_android_format(sector, side, subzone):
+    if sector == 0:
+        return "waiting_point"
+    elif sector is not None and side is None and subzone is None:
+        # sector만 있는 경우 (sector 도착) - aMM 형식
+        sector_chr = chr(ord('a') + int(sector) - 1)
+        return f"{sector_chr}MM"  # 중앙영역(M) + subzone None/0(M)
+    elif sector is not None and side is not None and subzone is not None:
+        # 완전한 좌표
+        sector_chr = chr(ord('a') + int(sector) - 1)
+        
+        if side == 'left':
+            side_chr = 'L'
+        elif side == 'right':
+            side_chr = 'R'
+        elif side == 'Middle':
+            side_chr = 'M'
+        
+        if subzone == 0:
+            subzone_chr = 'M'
+        else:
+            subzone_chr = chr(ord('a') + int(subzone) - 1)
+        return f"{sector_chr}{side_chr}{subzone_chr}"
+    else:
+        return "unknown"
+
+def convert_to_android_format_full(sector, side, subzone, direction):
+    """4자리 좌표를 안드로이드 형식으로 변환 (parked, lifted 메시지용)"""
+    if sector == 0:
+        return "waiting_point"
+    
+    # 완전한 좌표 (sector, side, subzone, direction)
+    sector_chr = chr(ord('a') + int(sector) - 1)
+    
+    if side == 'left':
+        side_chr = 'L'
+    elif side == 'right':
+        side_chr = 'R'
+    elif side == 'Middle':
+        side_chr = 'M'
+    
+    if subzone == 0:
+        subzone_chr = 'M'
+    else:
+        subzone_chr = chr(ord('a') + int(subzone) - 1)
+    
+    if direction == 'left':
+        direction_chr = 'L'
+    elif direction == 'right':
+        direction_chr = 'R'
+    elif direction == 'Middle':
+        direction_chr = 'M'
+    
+    return f"{sector_chr}{side_chr}{subzone_chr}{direction_chr}"
+
 def DFS(parking_lot: list):
     # 섹터의 left(subzone)부터, 각 subzone의 left/right를 순서대로 탐색
     for sector_idx, sector in enumerate(parking_lot):
