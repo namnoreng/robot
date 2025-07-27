@@ -28,6 +28,18 @@ if serial_port:
         serial_server = serial.Serial(serial_port, 115200)
         if serial_server.is_open:
             print(f"Serial communication is open. ({serial_port})")
+            
+            # 프로그램 시작 시 시리얼 버퍼 클리어 (이전 데이터 제거)
+            serial_server.reset_input_buffer()
+            serial_server.reset_output_buffer()
+            print("Serial buffers cleared.")
+            
+            # 추가 안전장치: 버퍼에 남은 데이터 읽어서 버리기
+            time.sleep(0.1)  # 짧은 대기
+            while serial_server.in_waiting:
+                old_data = serial_server.read().decode()
+                print(f"Discarded old data: '{old_data}'")
+            print("Serial initialization complete.")
         else:
             print("Failed to open serial communication.")
     except serial.SerialException as e:
@@ -144,21 +156,34 @@ try:
                 # 입차 시작: 차량 들어올리기 동작
                 print("[Client] 차량 들어올리기 시작...")
                 if serial_server is not None:
+                    # 7번 명령 전 버퍼 클리어 (안전장치)
+                    serial_server.reset_input_buffer()
+                    
                     serial_server.write(b"7")  # 차량 들어올리기 명령
                     print("[Client] 들어올리기 완료 신호('a') 대기 중...")
                     
                     # STM32로부터 'a' 신호 대기
+                    timeout_count = 0
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
+                            print(f"[Client] 시리얼 수신: '{recv}'")
                             if recv == "a":
                                 print("[Client] 차량 들어올리기 완료!")
-                                recv = ""  # recv 초기화
                                 break
+                            else:
+                                print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
+                        
+                        # 타임아웃 방지 (10초)
+                        timeout_count += 1
+                        if timeout_count > 100:  # 10초 (0.1초 * 100)
+                            print("[Client] 'a' 신호 대기 타임아웃 - 강제 진행")
+                            break
+                        time.sleep(0.1)
                     
                     # 들어올리기 완료 후 정지 및 안정화
                     serial_server.write(b"9")  # 정지 명령
-                    time.sleep(3)  # 3초 안정화 대기 (늘림)
+                    time.sleep(2)  # 2초 안정화 대기
                     
                     # 시리얼 버퍼 클리어
                     serial_server.reset_input_buffer()
@@ -167,7 +192,7 @@ try:
                     print("[Client] 시스템 안정화 완료, 주행 시작")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                    time.sleep(3)  # 시리얼이 없으면 3초 대기
+                    time.sleep(2)  # 시리얼이 없으면 2초 대기
 
                 # 예시: 첫 번째 마커까지 직진
                 print("[Client] 첫 번째 마커로 직진 시작")
