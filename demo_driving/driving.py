@@ -81,7 +81,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
     cv2.destroyAllWindows()
 
 # 직진 아르코마커 인식
-def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, target_distance=0.5):
+def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs):
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -109,7 +109,7 @@ def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeff
             )
 
             # 원하는 거리 이내에 들어오면 종료
-            if distance < target_distance:
+            if distance < 0.4:
                 break
 
         #cv2.imshow("frame", frame)
