@@ -1,14 +1,23 @@
 import cv2 as cv
 from cv2 import aruco
 import numpy as np
-import serial
+#import serial
 
 # 🔌 시리얼 포트 설정 (본인 환경에 맞게 수정)
-ser = serial.Serial('COM3', 9600)  # Windows: COMx / Linux: '/dev/ttyUSB0'
+#ser = serial.Serial('COM3', 9600)  # Windows: COMx / Linux: '/dev/ttyUSB0'
 
-# 마커 딕셔너리 지정
-marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
-param_markers = aruco.DetectorParameters()
+# OpenCV 버전에 따라 ArUco API 분기 처리
+cv_version = cv.__version__.split(".")
+if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+    # OpenCV 3.x
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters_create()
+    print("Using OpenCV 3.x ArUco API")
+else:
+    # OpenCV 4.x
+    marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters()
+    print("Using OpenCV 4.x ArUco API")
 
 # 웹캠 설정
 cap = cv.VideoCapture(0)
@@ -26,9 +35,18 @@ while True:
 
     gray_frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-    marker_corners, marker_IDs, reject = aruco.detectMarkers(
-        gray_frame, marker_dict, parameters=param_markers
-    )
+    # OpenCV 버전에 따라 detectMarkers API 사용
+    cv_version = cv.__version__.split(".")
+    if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+        # OpenCV 3.x
+        marker_corners, marker_IDs, reject = aruco.detectMarkers(
+            gray_frame, marker_dict, parameters=param_markers
+        )
+    else:
+        # OpenCV 4.x
+        marker_corners, marker_IDs, reject = cv.aruco.detectMarkers(
+            gray_frame, marker_dict, parameters=param_markers
+        )
 
     if marker_IDs is not None:
         for ids, corners in zip(marker_IDs, marker_corners):
@@ -52,27 +70,27 @@ while True:
                 cv.LINE_AA,
             )
 
-            # 시리얼 전송 메시지 설정
-            if marker_id == 1:
-                message = "Forward\n"
-            elif marker_id == 2:
-                message = "Backward\n"
-            elif marker_id == 3:
-                message = "Turn Left\n"
-            elif marker_id == 4:
-                message = "Turn Right\n"
-            else:
-                message = f"Unknown ID {marker_id}\n"
+    #         # 시리얼 전송 메시지 설정
+    #         if marker_id == 1:
+    #             message = "Forward\n"
+    #         elif marker_id == 2:
+    #             message = "Backward\n"
+    #         elif marker_id == 3:
+    #             message = "Turn Left\n"
+    #         elif marker_id == 4:
+    #             message = "Turn Right\n"
+    #         else:
+    #             message = f"Unknown ID {marker_id}\n"
 
-            # 중복 전송 방지: 한 프레임에 동일한 ID는 한 번만 전송
-            if marker_id not in sent_ids:
-                ser.write(message.encode())
-                print(f"[Sent to Serial] {message.strip()}")
-                sent_ids.add(marker_id)
+    #         # 중복 전송 방지: 한 프레임에 동일한 ID는 한 번만 전송
+    #         if marker_id not in sent_ids:
+    #             ser.write(message.encode())
+    #             print(f"[Sent to Serial] {message.strip()}")
+    #             sent_ids.add(marker_id)
 
-    else:
-        # 마커가 모두 사라졌으면, 전송 기록 초기화
-        sent_ids.clear()
+    # else:
+    #     # 마커가 모두 사라졌으면, 전송 기록 초기화
+    #     sent_ids.clear()
 
     cv.imshow("frame", frame)
 

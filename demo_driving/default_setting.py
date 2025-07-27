@@ -222,19 +222,21 @@ while True:
         try:
             camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
             dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
+            camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
+            dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
             marker_length = 0.05  # 마커 크기 (미터)
             
             print(f"마커 ID {marker_id}와의 거리 측정 중... (ESC로 종료)")
             
             while True:
-                ret, frame = cap_front.read()
+                ret, frame = cap_back.read()
                 if not ret:
                     break
                 
                 # driving.py의 find_aruco_info 함수 사용
                 distance, (x_angle, y_angle, z_angle), (center_x, center_y) = driving.find_aruco_info(
                     frame, marker_dict, param_markers, marker_id, 
-                    camera_front_matrix, dist_front_coeffs, marker_length
+                    camera_back_matrix, dist_back_coeffs, marker_length
                 )
                 
                 if distance is not None:
