@@ -384,7 +384,7 @@ try:
                     serial_server.write(b"1")  # 전진 시작
                     time.sleep(2)  # 안정화 대기
                 # 새로운 탈출 함수 사용 - 마커 0번과의 거리가 0.3m 이상이 될 때까지
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.3)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.3)
                 
                 # 탈출 성공
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
