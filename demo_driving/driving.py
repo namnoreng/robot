@@ -292,3 +292,59 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
         print("[Driving] 복합 후진 제어 완료")
     
     return True
+
+def escape_from_parking(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, target_distance=0.3):
+    """
+    주차공간에서 탈출하는 함수 - 마커와의 거리가 target_distance보다 클 때까지 전진
+    
+    Parameters:
+    - cap: 카메라 객체
+    - aruco_dict: ArUco 딕셔너리
+    - parameters: ArUco 파라미터
+    - marker_index: 탈출 기준 마커 ID
+    - camera_matrix: 카메라 행렬
+    - dist_coeffs: 왜곡 계수
+    - target_distance: 목표 거리 (이 거리보다 멀어지면 탈출 완료)
+    """
+    print(f"[Escape] 주차공간 탈출 시작 - 마커 {marker_index}와의 거리가 {target_distance}m 이상이 될 때까지 전진")
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("[Escape] 카메라 프레임 읽기 실패")
+            break
+
+        # ArUco 마커 검출
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+
+        if ids is not None:
+            for i in range(len(ids)):
+                if ids[i][0] == marker_index:
+                    # 마커 발견 - 거리 계산
+                    cv_version = cv2.__version__.split(".")
+                    if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+                        rvecs, tvecs = cv2.aruco.estimatePoseSingleMarkers(
+                            np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                        )
+                    else:
+                        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+                            np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                        )
+                    
+                    distance = np.linalg.norm(tvecs[0][0])
+                    print(f"[Escape] 마커 {marker_index} 거리: {distance:.3f}m (목표: {target_distance}m 이상)")
+                    
+                    # 마커와의 거리가 목표 거리보다 크면 탈출 완료
+                    if distance > target_distance:
+                        print(f"[Escape] 탈출 완료! 거리: {distance:.3f}m")
+                        return True
+                    break
+        
+        # ESC 키로 강제 종료
+        if cv2.waitKey(1) & 0xFF == 27:  # ESC 키
+            print("[Escape] 사용자가 탈출을 중단했습니다")
+            break
+    
+    cv2.destroyAllWindows()
+    return False

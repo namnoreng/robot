@@ -379,11 +379,13 @@ try:
                 print("[Client] 제자리 복귀 시작...")
                 
                 # 1. 주차 공간에서 나오기 (마커 0번까지 전진)
-                print("[Client] 주차 공간에서 탈출 중... (마커 0번 인식까지)")
+                print("[Client] 주차 공간에서 탈출 중... (마커 0번과의 거리가 0.3m 이상이 될 때까지)")
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진 시작
-                # 마커 0번을 인식할 때까지 전진
-                driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.3)
+                # 새로운 탈출 함수 사용 - 마커 0번과의 거리가 0.3m 이상이 될 때까지
+                escape_success = driving.escape_from_parking(cap_back, marker_dict, param_markers, marker_index=0, 
+                                                   camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, 
+                                                   target_distance=0.3)
                 
                 # 탈출 성공
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
@@ -620,11 +622,13 @@ try:
                 # 4. 마커 17(차량 대기 위치)로 복귀 (입차와 동일한 복귀 로직)
                 print("[Client] 차량 대기 위치로 복귀 시작...")
                 
-                # 주차 공간에서 나오기 (마커 0번까지 전진)
-                print("[Client] 주차 공간에서 탈출 중... (마커 0번 인식까지)")
+                # 주차 공간에서 나오기 (마커 0번과의 거리가 0.3m 이상이 될 때까지)
+                print("[Client] 주차 공간에서 탈출 중... (마커 0번과의 거리가 0.3m 이상이 될 때까지)")
                 if serial_server is not None:
                     serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                escape_success = driving.escape_from_parking(cap_front, marker_dict, param_markers, marker_index=0, 
+                                                   camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, 
+                                                   target_distance=0.3)
                 if serial_server is not None:
                     serial_server.write(b"9")
                     time.sleep(1)
