@@ -288,7 +288,7 @@ try:
                 time.sleep(2)
 
                 # subzone 도착 후 로봇 초기화
-                driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                # driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
 
                 # 방향에 따라 회전
                 if direction == "left":
