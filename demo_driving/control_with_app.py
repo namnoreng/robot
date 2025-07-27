@@ -163,7 +163,6 @@ try:
                     print("[Client] 들어올리기 완료 신호('a') 대기 중...")
                     
                     # STM32로부터 'a' 신호 대기
-                    timeout_count = 0
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
@@ -173,12 +172,6 @@ try:
                                 break
                             else:
                                 print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
-                        
-                        # 타임아웃 방지 (10초)
-                        timeout_count += 1
-                        if timeout_count > 100:  # 10초 (0.1초 * 100)
-                            print("[Client] 'a' 신호 대기 타임아웃 - 강제 진행")
-                            break
                         time.sleep(0.1)
                     
                     # 들어올리기 완료 후 정지 및 안정화
