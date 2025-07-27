@@ -39,12 +39,17 @@ for car_number, info in parking_status.items():
         info["sector"], info["side"], info["subzone"], info["direction"], car_number
     )
 
-def convert_to_android_format(sector, side, subzone, direction):
+def convert_to_android_format(sector, side, subzone):
     sector_chr = chr(ord('a') + int(sector) - 1)
-    side_chr = 'L' if side == 'left' else 'R'
+    
+    if side == 'left':
+        side_chr = 'L'
+    elif side == 'right':
+        side_chr = 'R'
+    elif side == 'Middle':
+        side_chr = 'M'
     subzone_chr = chr(ord('a') + int(subzone) - 1)
-    direction_chr = 'L' if direction == 'left' else 'R'
-    return f"{sector_chr}{side_chr}{subzone_chr}{direction_chr}"
+    return f"{sector_chr}{side_chr}{subzone_chr}"
 
 def handle_client(client_socket, addr):
     print(f"[+] Connected by {addr}")
