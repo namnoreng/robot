@@ -153,6 +153,7 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "a":
                                 print("[Client] 차량 들어올리기 완료!")
+                                recv = ""  # recv 초기화
                                 break
                     
                     # 들어올리기 완료 후 정지 및 안정화
