@@ -396,14 +396,23 @@ try:
                 # 주차 완료 후 제자리로 복귀
                 print("[Client] 제자리 복귀 시작...")
                 
-                # 1. 주차 공간에서 나오기 (마커 0번까지 전진)
-                print("[Client] 주차 공간에서 탈출 중... (마커 0번과의 거리가 0.3m 이상이 될 때까지)")
+                # 1. 주차 공간에서 나오기 (마커 2번 인식 후 추가 직진하여 두 번째 0번에서 멈춤)
+                print("[Client] 주차 공간에서 탈출 중... (마커 2번 인식 후 추가 직진)")
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진 시작
-                    time.sleep(3)  # 안정화 대기
-                # 새로운 탈출 함수 사용 - 마커 0번과의 거리가 0.3m 이상이 될 때까지
-                driving.flush_camera(cap_back, 5)  # 뒷카메라 플러시
-                driving.flush_camera(cap_front, 5)  # 전방카메라 플러시
+                
+                # 먼저 마커 2번을 인식할 때까지 전진
+                driving.flush_camera(cap_back, 5) if cap_back is not None else None
+                driving.flush_camera(cap_front, 5)
+                print("[Client] 마커 2번 인식 중...")
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=2, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.3)
+                
+                # 마커 2번 인식 후 추가로 직진하여 두 번째 0번 마커 근처로 이동
+                print("[Client] 마커 2번 인식 완료, 추가 직진하여 두 번째 0번 마커로...")
+                
+                # 이제 0번 마커 인식 (두 번째 0번이어야 함)
+                driving.flush_camera(cap_front, 5)
+                print("[Client] 두 번째 0번 마커 인식 시작...")
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.3)
                 
                 # 탈출 성공
