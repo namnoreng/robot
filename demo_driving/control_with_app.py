@@ -278,7 +278,7 @@ try:
                     serial_server.write(b"1")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.4)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.38)
                 if serial_server is not None:
                     serial_server.write(b"9")
 
