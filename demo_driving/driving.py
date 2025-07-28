@@ -26,6 +26,13 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
     FRAME_CENTER_Y = 360
     CENTER_TOLERANCE = 30  # 중앙 허용 오차 (픽셀)
     ANGLE_TOLERANCE = 5    # 각도 허용 오차 (도)
+    
+    # 마커 위치 추적 변수
+    last_marker_position = None  # 마지막으로 본 마커 위치 (center_x, center_y)
+    marker_lost_count = 0  # 마커를 놓친 프레임 수
+    MAX_LOST_FRAMES = 10  # 마커를 놓쳤을 때 최대 대기 프레임
+    
+    print(f"[Initialize] 마커 {marker_index} 기준 로봇 초기화 시작")
 
     while True:
         ret, frame = cap.read()
@@ -36,44 +43,88 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
         result = find_aruco_info(
             frame, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, marker_length
         )
-        print("find_aruco_info result:", result)
         distance, (x_angle, y_angle, z_angle), (center_x, center_y) = result
 
         if distance is not None:
+            # 마커를 찾았을 때
+            marker_lost_count = 0  # 카운터 리셋
+            last_marker_position = (center_x, center_y)  # 위치 업데이트
+            
             dx = center_x - FRAME_CENTER_X
             angle_error = z_angle
 
-            print(f"중심 오차: ({dx}), 각도 오차: {angle_error:.2f}")
+            print(f"[Initialize] 중심 오차: ({dx}), 각도 오차: {angle_error:.2f}")
 
             # 1. 회전값 먼저 맞추기
             if abs(angle_error) > ANGLE_TOLERANCE:
                 if angle_error > 0:
-                    print("좌회전")
+                    print("[Initialize] 좌회전")
                     serial_server.write('3'.encode())
                 else:
-                    print("우회전")
+                    print("[Initialize] 우회전")
                     serial_server.write('4'.encode())
+                time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
 
             # 2. 회전이 맞으면 중앙값 맞추기
             if abs(dx) > CENTER_TOLERANCE:
                 if dx > 0:
-                    print("오른쪽으로 이동")
+                    print("[Initialize] 오른쪽으로 이동")
                     serial_server.write('6'.encode())
                 else:
-                    print("왼쪽으로 이동")
+                    print("[Initialize] 왼쪽으로 이동")
                     serial_server.write('5'.encode())
+                time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 중앙이 맞을 때까지 반복
 
             # 3. 둘 다 맞으면 정지
-            print("초기화 완료: 중앙+수직")
+            print("[Initialize] 초기화 완료: 중앙+수직")
             serial_server.write('9'.encode())  # 정지 명령
             break
 
         else:
-            print("마커를 찾지 못했습니다.")
-            serial_server.write('9'.encode())  # 마커를 찾지 못했을 때 정지 명령
+            # 마커를 찾지 못했을 때
+            marker_lost_count += 1
+            print(f"[Initialize] 마커를 찾지 못했습니다. ({marker_lost_count}/{MAX_LOST_FRAMES})")
+            
+            if marker_lost_count >= MAX_LOST_FRAMES and last_marker_position is not None:
+                # 마커를 일정 시간 이상 놓쳤고, 마지막 위치 정보가 있을 때
+                last_x, last_y = last_marker_position
+                
+                print(f"[Initialize] 마커 재탐색 중... 마지막 위치: ({last_x}, {last_y})")
+                
+                # 마지막 위치를 기준으로 이동 방향 결정
+                if last_x < FRAME_CENTER_X - 100:  # 마커가 왼쪽에 있었음
+                    print("[Initialize] 마커가 왼쪽에 있었음 - 왼쪽으로 이동")
+                    serial_server.write('5'.encode())  # 왼쪽으로 이동
+                elif last_x > FRAME_CENTER_X + 100:  # 마커가 오른쪽에 있었음
+                    print("[Initialize] 마커가 오른쪽에 있었음 - 오른쪽으로 이동")
+                    serial_server.write('6'.encode())  # 오른쪽으로 이동
+                elif last_y < FRAME_CENTER_Y - 100:  # 마커가 위쪽에 있었음
+                    print("[Initialize] 마커가 위쪽에 있었음 - 전진")
+                    serial_server.write('1'.encode())  # 전진
+                elif last_y > FRAME_CENTER_Y + 100:  # 마커가 아래쪽에 있었음
+                    print("[Initialize] 마커가 아래쪽에 있었음 - 후진")
+                    serial_server.write('2'.encode())  # 후진
+                else:
+                    # 중앙 근처에서 사라진 경우 - 약간 후진해서 시야 확보
+                    print("[Initialize] 마커가 중앙에서 사라짐 - 후진하여 시야 확보")
+                    serial_server.write('2'.encode())  # 후진
+                
+                time.sleep(0.5)  # 이동 후 잠시 대기
+                serial_server.write('9'.encode())  # 정지
+                marker_lost_count = 0  # 카운터 리셋
+                
+            elif marker_lost_count >= MAX_LOST_FRAMES * 2:
+                # 너무 오래 못 찾으면 정지
+                print("[Initialize] 마커를 찾을 수 없어 초기화를 중단합니다.")
+                serial_server.write('9'.encode())  # 정지 명령
+                break
+            else:
+                # 잠시 정지하고 다시 시도
+                serial_server.write('9'.encode())  # 정지 명령
 
+        time.sleep(0.1)  # 프레임 처리 딜레이
         #cv2.imshow("frame", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
