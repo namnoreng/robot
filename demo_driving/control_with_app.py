@@ -244,7 +244,7 @@ try:
                 client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
                 if serial_server is not None:
                     serial_server.write(b"9")
-                time.sleep(2)
+                time.sleep(0.5)
 
                 # 방향에 따라 회전
                 if side == "left":
@@ -270,7 +270,7 @@ try:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("sector 회전 완료 ")
                 driving.flush_camera(cap_front, 5)  # 카메라 플러시
-                time.sleep(2)
+                time.sleep(1)
                 if serial_server is not None:
                     serial_server.write(b"9")
 
@@ -285,7 +285,7 @@ try:
                 # subzone 도착 후 서버에 신호 전송
                 print("[Client] subzone 도착 신호 전송")
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
-                time.sleep(2)
+                time.sleep(0.5)
 
                 # subzone 도착 후 로봇 초기화
                 # driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
@@ -331,7 +331,7 @@ try:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("subzone 회전 완료")
                 driving.flush_camera(cap_front, 5)  # 카메라 플러시
-                time.sleep(2)
+                time.sleep(1)
                 if serial_server is not None:
                     serial_server.write(b"9")
 
@@ -431,14 +431,14 @@ try:
                 
                 # 이제 0번 마커 인식 (두 번째 0번이어야 함)
                 print("[Client] 두 번째 0번 마커 인식 시작...")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.36)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.40)
                 
                 # 탈출 성공
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
 
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
-                    time.sleep(1)
+                    time.sleep(0.5)
                 
                 # 2. 돌아갈 방향으로 회전 (주차할 때와 반대)
                 print("[Client] 복귀를 위한 회전...")
@@ -454,7 +454,7 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "s":
                                 break
-                    time.sleep(1)
+                    time.sleep(0.5)
                 
                 driving.flush_camera(cap_back, 5)  # 카메라 플러시
                 driving.flush_camera(cap_front, 5)  # 카메라 플러시
@@ -472,7 +472,7 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode()) # sector 도착
-                    time.sleep(1)
+                    time.sleep(0.5)
                 
                 # 4. 첫 번째 회전 방향과 반대로 회전
                 print("[Client] 첫 번째 마커 방향으로 회전...")
@@ -488,7 +488,7 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "s":
                                 break
-                    time.sleep(1)
+                    time.sleep(0.5)
                 
                 # 5. 초기 위치로 복귀 (첫 번째 마커까지 후진하면서 뒷카메라로)
                 print("[Client] 초기 위치로 복귀 중... (후진, 뒷카메라 사용, 마커 3번 인식)")
@@ -598,7 +598,7 @@ try:
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
-                time.sleep(2)
+                time.sleep(0.5)
 
                 # 방향에 따라 회전
                 if side == "left":
@@ -619,7 +619,7 @@ try:
                                     break
                 print("sector 회전 완료")
                 driving.flush_camera(cap_front, 5)
-                time.sleep(2)
+                time.sleep(0.5)
                 if serial_server is not None:
                     serial_server.write(b"9")
 
@@ -629,7 +629,7 @@ try:
                 driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
-                time.sleep(2)
+                time.sleep(0.5)
 
                 # 방향에 따라 회전
                 if direction == "left":
@@ -650,7 +650,7 @@ try:
                                     break
                 print("subzone 회전 완료")
                 driving.flush_camera(cap_front, 5)
-                time.sleep(2)
+                time.sleep(0.5)
                 if serial_server is not None:
                     serial_server.write(b"9")
 
@@ -690,7 +690,7 @@ try:
                                                    target_distance=0.3)
                 if serial_server is not None:
                     serial_server.write(b"9")
-                    time.sleep(1)
+                    time.sleep(0.5)
                 
                 # 돌아갈 방향으로 회전
                 print("[Client] 복귀를 위한 회전...")
@@ -705,7 +705,7 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "s":
                                 break
-                    time.sleep(1)
+                    time.sleep(0,5)
                 
                 # 두 번째 마커로 복귀 (후진, 뒷카메라)
                 print("[Client] 두 번째 마커로 복귀 중... (후진, 뒷카메라 사용, 마커 0번 인식)")
@@ -717,7 +717,7 @@ try:
                     driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 if serial_server is not None:
                     serial_server.write(b"9")
-                    time.sleep(1)
+                    time.sleep(0.5)
                 
                 # 첫 번째 회전 방향과 반대로 회전
                 print("[Client] 첫 번째 마커 방향으로 회전...")
@@ -732,7 +732,7 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "s":
                                 break
-                    time.sleep(1)
+                    time.sleep(0.5)
                 
                 # 첫 번째 마커로 복귀 (후진, 뒷카메라)
                 print("[Client] 첫 번째 마커로 복귀 중... (후진, 뒷카메라 사용, 마커 3번 인식)")
