@@ -293,22 +293,40 @@ try:
                 # 방향에 따라 회전
                 if direction == "left":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"4")
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                     else:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 elif direction == "right":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"3")
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                     else:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("subzone 회전 완료")
