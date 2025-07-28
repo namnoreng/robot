@@ -424,7 +424,7 @@ try:
                 driving.flush_camera(cap_back, 5) if cap_back is not None else None
                 driving.flush_camera(cap_front, 5)
                 print("[Client] 마커 2번 인식 중...")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=2, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.3)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=2, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.42)
                 
                 # 마커 2번 인식 후 추가로 직진하여 두 번째 0번 마커 근처로 이동
                 print("[Client] 마커 2번 인식 완료, 추가 직진하여 두 번째 0번 마커로...")
