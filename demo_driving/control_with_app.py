@@ -335,23 +335,42 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")
 
-                # 복합 후진 제어 함수 호출 (명시적으로 마커 1, 2 사용)
-                success = driving.advanced_parking_control(
-                    cap_front, cap_back, marker_dict, param_markers,
-                    camera_front_matrix, dist_front_coeffs,
-                    camera_back_matrix, dist_back_coeffs, serial_server,
-                    back_marker_id=1, front_marker_id=2
-                )
+                # 복합 후진 제어 함수 호출 (명시적으로 마커 1, 2 사용) - 주석처리
+                # success = driving.advanced_parking_control(
+                #     cap_front, cap_back, marker_dict, param_markers,
+                #     camera_front_matrix, dist_front_coeffs,
+                #     camera_back_matrix, dist_back_coeffs, serial_server,
+                #     back_marker_id=1, front_marker_id=2
+                # )
                 
-                if success:
-                    print("[Client] 복합 후진 제어 성공")
+                # if success:
+                #     print("[Client] 복합 후진 제어 성공")
+                # else:
+                #     print("[Client] 복합 후진 제어 실패 - 기본 후진으로 대체")
+                #     # 실패 시 기본 후진
+                #     if serial_server is not None:
+                #         serial_server.write(b"2")
+                #         time.sleep(2)  # 2초간 후진
+                #         serial_server.write(b"9")
+                
+                # 간단한 후진 제어: 마커 1번 인식까지 후진
+                print("[Client] 마커 1번 인식까지 후진 시작...")
+                if serial_server is not None:
+                    serial_server.write(b"2")  # 후진 시작
+                
+                # 뒷카메라로 마커 1번 인식
+                if cap_back is not None:
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=1, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                    print("[Client] 뒷카메라로 마커 1번 인식 완료")
                 else:
-                    print("[Client] 복합 후진 제어 실패 - 기본 후진으로 대체")
-                    # 실패 시 기본 후진
-                    if serial_server is not None:
-                        serial_server.write(b"2")
-                        time.sleep(2)  # 2초간 후진
-                        serial_server.write(b"9")
+                    # 뒷카메라가 없으면 전방카메라로 대체
+                    print("[Client] 뒷카메라가 없어 전방카메라로 대체")
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=1, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                    print("[Client] 전방카메라로 마커 1번 인식 완료")
+                
+                if serial_server is not None:
+                    serial_server.write(b"9")  # 정지
+                print("[Client] 마커 1번까지 후진 완료")
                 
                 time.sleep(1)  # 안정화 대기
                 
@@ -727,29 +746,48 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")
                 
-                # 5. 차량 대기 장소로 이동 (기존 복합 후진 제어 함수 활용)
-                print("[Client] 차량 대기 장소로 이동... (복합 후진 제어)")
+                # 5. 차량 대기 장소로 이동 (기존 복합 후진 제어 함수 활용) - 주석처리
+                # print("[Client] 차량 대기 장소로 이동... (복합 후진 제어)")
                 
-                # 기존 advanced_parking_control 함수 사용 (마커 17, 3 사용)
-                success = driving.advanced_parking_control(
-                    cap_front, cap_back, marker_dict, param_markers,
-                    camera_front_matrix, dist_front_coeffs,
-                    camera_back_matrix, dist_back_coeffs, serial_server,
-                    back_marker_id=17, front_marker_id=3
-                )
+                # 기존 advanced_parking_control 함수 사용 (마커 17, 3 사용) - 주석처리
+                # success = driving.advanced_parking_control(
+                #     cap_front, cap_back, marker_dict, param_markers,
+                #     camera_front_matrix, dist_front_coeffs,
+                #     camera_back_matrix, dist_back_coeffs, serial_server,
+                #     back_marker_id=17, front_marker_id=3
+                # )
                 
-                if success:
-                    print("[Client] 차량 대기 장소 도착 성공")
+                # if success:
+                #     print("[Client] 차량 대기 장소 도착 성공")
+                # else:
+                #     print("[Client] 복합 후진 제어 실패 - 기본 후진으로 대체")
+                #     # 실패 시 기본 후진으로 마커 17까지 이동
+                #     if serial_server is not None:
+                #         serial_server.write(b"2")  # 후진
+                #     driving.driving(cap_back if cap_back is not None else cap_front, marker_dict, param_markers, marker_index=17, 
+                #                   camera_matrix=camera_back_matrix if cap_back is not None else camera_front_matrix, 
+                #                   dist_coeffs=dist_back_coeffs if cap_back is not None else dist_front_coeffs)
+                #     if serial_server is not None:
+                #         serial_server.write(b"9")  # 정지
+                
+                # 간단한 후진 제어: 마커 17번 인식까지 후진
+                print("[Client] 마커 17번 인식까지 후진 시작...")
+                if serial_server is not None:
+                    serial_server.write(b"2")  # 후진 시작
+                
+                # 뒷카메라로 마커 17번 인식
+                if cap_back is not None:
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=17, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                    print("[Client] 뒷카메라로 마커 17번 인식 완료")
                 else:
-                    print("[Client] 복합 후진 제어 실패 - 기본 후진으로 대체")
-                    # 실패 시 기본 후진으로 마커 17까지 이동
-                    if serial_server is not None:
-                        serial_server.write(b"2")  # 후진
-                    driving.driving(cap_back if cap_back is not None else cap_front, marker_dict, param_markers, marker_index=17, 
-                                  camera_matrix=camera_back_matrix if cap_back is not None else camera_front_matrix, 
-                                  dist_coeffs=dist_back_coeffs if cap_back is not None else dist_front_coeffs)
-                    if serial_server is not None:
-                        serial_server.write(b"9")  # 정지
+                    # 뒷카메라가 없으면 전방카메라로 대체
+                    print("[Client] 뒷카메라가 없어 전방카메라로 대체")
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=17, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                    print("[Client] 전방카메라로 마커 17번 인식 완료")
+                
+                if serial_server is not None:
+                    serial_server.write(b"9")  # 정지
+                print("[Client] 마커 17번까지 후진 완료")
                 
                 # 6. 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
