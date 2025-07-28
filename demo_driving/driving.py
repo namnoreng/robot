@@ -233,20 +233,29 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
                     corners, ids, _ = cv2.aruco.detectMarkers(gray_front, aruco_dict, parameters=parameters)
                     
                     if ids is not None:
-                        marker_centers = []
+                        closest_marker_center = None
+                        closest_distance = float('inf')
+                        
                         for i, marker_id in enumerate(ids):
                             if marker_id[0] == front_marker_id:  # 지정된 마커만 처리
-                                # 마커 중심 계산
-                                c = corners[i].reshape(4, 2)
-                                center_x = int(np.mean(c[:, 0]))
-                                marker_centers.append(center_x)
+                                # 마커까지의 거리 계산
+                                distance, _, _ = find_aruco_info(
+                                    frame_front, aruco_dict, parameters, front_marker_id, 
+                                    camera_front_matrix, dist_front_coeffs, marker_length
+                                )
+                                
+                                if distance is not None and distance < closest_distance:
+                                    # 마커 중심 계산
+                                    c = corners[i].reshape(4, 2)
+                                    center_x = int(np.mean(c[:, 0]))
+                                    closest_marker_center = center_x
+                                    closest_distance = distance
                         
-                        if marker_centers:
-                            # 여러 마커가 있으면 평균 중심 계산
-                            avg_center_x = np.mean(marker_centers)
-                            dx = avg_center_x - FRAME_CENTER_X
+                        if closest_marker_center is not None:
+                            # 가장 가까운 마커의 중심을 기준으로 계산
+                            dx = closest_marker_center - FRAME_CENTER_X
                             
-                            print(f"[Driving] 전방 마커{front_marker_id} 개수: {len(marker_centers)}, 평균중심: {avg_center_x:.1f}, 오차: {dx:.1f}")
+                            print(f"[Driving] 가장 가까운 마커{front_marker_id} 거리: {closest_distance:.3f}m, 중심: {closest_marker_center:.1f}, 오차: {dx:.1f}")
                             
                             # 중앙정렬이 필요한 경우만 좌우 이동
                             if abs(dx) > CENTER_TOLERANCE:

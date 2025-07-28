@@ -447,10 +447,10 @@ try:
                     serial_server.write(b"2")  # 후진 시작
                 # 뒷카메라로 마커 0번 인식
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.5)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.45)
                 else:
                     print("[Client] 뒷카메라가 없어 전방카메라로 대체")
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.5)               
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.45)               
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode()) # sector 도착
@@ -503,58 +503,71 @@ try:
                 print(f"[Client] PARK 명령 파싱 오류: {e}")
                 client_socket.sendall(b"ERROR: PARK command parse error\n")
         elif command.startswith("OUT"):
-            # 예: "OUT,1234" (차량번호)
+            # 예: "OUT,sector,side,subzone,direction,car_number" (서버에서 위치 정보 포함하여 전송)
             try:
-                _, car_number = command.split(",")
-                print(f"[Client] 출차 요청 차량번호: {car_number}")
-                
-                # 1. 차량 위치 조회 (parking_status.json에서 검색)
-                import json
-                try:
-                    with open("parking_status.json", "r", encoding="utf-8") as f:
-                        parking_data = json.load(f)
+                parts = command.split(",")
+                if len(parts) == 6:
+                    # 서버에서 위치 정보를 포함하여 전송한 경우
+                    _, sector, side, subzone, direction, car_number = parts
+                    sector = int(sector)
+                    subzone = int(subzone)
+                    print(f"[Client] 출차 요청 - 차량번호: {car_number}, 위치: {sector},{side},{subzone},{direction}")
+                elif len(parts) == 2:
+                    # 기존 방식: 차량번호만 전송된 경우 (하위 호환성)
+                    _, car_number = parts
+                    print(f"[Client] 출차 요청 차량번호: {car_number}")
                     
-                    # 차량번호로 위치 찾기
-                    car_location = None
-                    for sector_key, sector_data in parking_data.items():
-                        if sector_key == "total_spaces":
-                            continue
-                        for side_key, side_data in sector_data.items():
-                            for subzone_key, subzone_data in side_data.items():
-                                for direction_key, direction_data in subzone_data.items():
-                                    if direction_data.get("car_number") == car_number:
-                                        car_location = {
-                                            "sector": int(sector_key.replace("sector_", "")),
-                                            "side": side_key,
-                                            "subzone": int(subzone_key.replace("subzone_", "")),
-                                            "direction": direction_key
-                                        }
+                    # 차량 위치 조회 (parking_status.json에서 검색)
+                    import json
+                    try:
+                        with open("parking_status.json", "r", encoding="utf-8") as f:
+                            parking_data = json.load(f)
+                        
+                        # 차량번호로 위치 찾기
+                        car_location = None
+                        for sector_key, sector_data in parking_data.items():
+                            if sector_key == "total_spaces":
+                                continue
+                            for side_key, side_data in sector_data.items():
+                                for subzone_key, subzone_data in side_data.items():
+                                    for direction_key, direction_data in subzone_data.items():
+                                        if direction_data.get("car_number") == car_number:
+                                            car_location = {
+                                                "sector": int(sector_key.replace("sector_", "")),
+                                                "side": side_key,
+                                                "subzone": int(subzone_key.replace("subzone_", "")),
+                                                "direction": direction_key
+                                            }
+                                            break
+                                    if car_location:
                                         break
                                 if car_location:
                                     break
                             if car_location:
                                 break
-                        if car_location:
-                            break
-                    
-                    if not car_location:
-                        print(f"[Client] 차량번호 {car_number}를 찾을 수 없습니다.")
-                        client_socket.sendall(f"ERROR: Car {car_number} not found\n".encode())
+                        
+                        if not car_location:
+                            print(f"[Client] 차량번호 {car_number}를 찾을 수 없습니다.")
+                            client_socket.sendall(f"ERROR: Car {car_number} not found\n".encode())
+                            continue
+                        
+                        print(f"[Client] 차량 위치 발견: {car_location}")
+                        sector = car_location["sector"]
+                        side = car_location["side"]
+                        subzone = car_location["subzone"]
+                        direction = car_location["direction"]
+                        
+                    except FileNotFoundError:
+                        print("[Client] parking_status.json 파일을 찾을 수 없습니다.")
+                        client_socket.sendall(b"ERROR: Parking status file not found\n")
                         continue
-                    
-                    print(f"[Client] 차량 위치 발견: {car_location}")
-                    sector = car_location["sector"]
-                    side = car_location["side"]
-                    subzone = car_location["subzone"]
-                    direction = car_location["direction"]
-                    
-                except FileNotFoundError:
-                    print("[Client] parking_status.json 파일을 찾을 수 없습니다.")
-                    client_socket.sendall(b"ERROR: Parking status file not found\n")
-                    continue
-                except json.JSONDecodeError:
-                    print("[Client] parking_status.json 파일 파싱 오류")
-                    client_socket.sendall(b"ERROR: Parking status file parse error\n")
+                    except json.JSONDecodeError:
+                        print("[Client] parking_status.json 파일 파싱 오류")
+                        client_socket.sendall(b"ERROR: Parking status file parse error\n")
+                        continue
+                else:
+                    print(f"[Client] OUT 명령 형식 오류: {command}")
+                    client_socket.sendall(b"ERROR: Invalid OUT command format\n")
                     continue
                 
                 # 2. 차량 위치로 이동 (입차와 동일한 경로)
@@ -794,18 +807,6 @@ try:
                 
                 # 대기 위치 복귀 완료 신호를 서버에 전송
                 client_socket.sendall(f"COMPLETE\n".encode())
-                
-                # 주차 상태에서 차량 정보 제거
-                try:
-                    parking_data[f"sector_{sector}"][side][f"subzone_{subzone}"][direction] = {
-                        "occupied": False,
-                        "car_number": None
-                    }
-                    with open("parking_status.json", "w", encoding="utf-8") as f:
-                        json.dump(parking_data, f, ensure_ascii=False, indent=2)
-                    print(f"[Client] 주차 상태 업데이트 완료")
-                except Exception as e:
-                    print(f"[Client] 주차 상태 업데이트 실패: {e}")
                 
                 client_socket.sendall(f"OK: OUT {car_number} completed\n".encode())
                 
