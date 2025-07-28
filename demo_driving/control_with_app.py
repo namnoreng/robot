@@ -249,23 +249,40 @@ try:
                 # 방향에 따라 회전
                 if side == "left":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"3")
-                        # 회전 완료 신호(s) 대기
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                     else:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 elif side == "right":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"4")
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                     else:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("sector 회전 완료 ")
@@ -443,17 +460,26 @@ try:
                 # 2. 돌아갈 방향으로 회전 (주차할 때와 반대)
                 print("[Client] 복귀를 위한 회전...")
                 if serial_server is not None:
+                    # 시리얼 버퍼 클리어
+                    serial_server.reset_input_buffer()
                     if direction == "left":
                         serial_server.write(b"3")  # 원래 왔던 방향과 반대로
                     elif direction == "right":
                         serial_server.write(b"4")
                     
                     # 회전 완료 신호 대기
+                    timeout_count = 0
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
+                            print(f"[Client] 회전 신호 수신: '{recv}'")
                             if recv == "s":
                                 break
+                        time.sleep(0.1)
+                        timeout_count += 1
+                        if timeout_count > 100:  # 10초 타임아웃
+                            print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                            break
                     time.sleep(0.5)
                 
                 driving.flush_camera(cap_back, 5)  # 카메라 플러시
@@ -477,17 +503,26 @@ try:
                 # 4. 첫 번째 회전 방향과 반대로 회전
                 print("[Client] 첫 번째 마커 방향으로 회전...")
                 if serial_server is not None:
+                    # 시리얼 버퍼 클리어
+                    serial_server.reset_input_buffer()
                     if side == "left":
                         serial_server.write(b"4")  # 왔던 방향과 반대
                     elif side == "right":
                         serial_server.write(b"3")
                     
                     # 회전 완료 신호 대기
+                    timeout_count = 0
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
+                            print(f"[Client] 회전 신호 수신: '{recv}'")
                             if recv == "s":
                                 break
+                        time.sleep(0.1)
+                        timeout_count += 1
+                        if timeout_count > 100:  # 10초 타임아웃
+                            print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                            break
                     time.sleep(0.5)
                 
                 # 5. 초기 위치로 복귀 (첫 번째 마커까지 후진하면서 뒷카메라로)
@@ -603,20 +638,38 @@ try:
                 # 방향에 따라 회전
                 if side == "left":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"3")
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                 elif side == "right":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"4")
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                 print("sector 회전 완료")
                 driving.flush_camera(cap_front, 5)
                 time.sleep(0.5)
@@ -634,20 +687,38 @@ try:
                 # 방향에 따라 회전
                 if direction == "left":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"4")
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                 elif direction == "right":
                     if serial_server is not None:
+                        # 시리얼 버퍼 클리어
+                        serial_server.reset_input_buffer()
                         serial_server.write(b"3")
+                        timeout_count = 0
                         while True:
                             if serial_server.in_waiting:
                                 recv = serial_server.read().decode()
+                                print(f"[Client] 회전 신호 수신: '{recv}'")
                                 if recv == "s":
                                     break
+                            time.sleep(0.1)
+                            timeout_count += 1
+                            if timeout_count > 100:  # 10초 타임아웃
+                                print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                                break
                 print("subzone 회전 완료")
                 driving.flush_camera(cap_front, 5)
                 time.sleep(0.5)
@@ -695,17 +766,26 @@ try:
                 # 돌아갈 방향으로 회전
                 print("[Client] 복귀를 위한 회전...")
                 if serial_server is not None:
+                    # 시리얼 버퍼 클리어
+                    serial_server.reset_input_buffer()
                     if direction == "left":
                         serial_server.write(b"3")
                     elif direction == "right":
                         serial_server.write(b"4")
                     
+                    timeout_count = 0
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
+                            print(f"[Client] 회전 신호 수신: '{recv}'")
                             if recv == "s":
                                 break
-                    time.sleep(0,5)
+                        time.sleep(0.1)
+                        timeout_count += 1
+                        if timeout_count > 100:  # 10초 타임아웃
+                            print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                            break
+                    time.sleep(0.5)
                 
                 # 두 번째 마커로 복귀 (후진, 뒷카메라)
                 print("[Client] 두 번째 마커로 복귀 중... (후진, 뒷카메라 사용, 마커 0번 인식)")
@@ -722,16 +802,25 @@ try:
                 # 첫 번째 회전 방향과 반대로 회전
                 print("[Client] 첫 번째 마커 방향으로 회전...")
                 if serial_server is not None:
+                    # 시리얼 버퍼 클리어
+                    serial_server.reset_input_buffer()
                     if side == "left":
                         serial_server.write(b"4")
                     elif side == "right":
                         serial_server.write(b"3")
                     
+                    timeout_count = 0
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
+                            print(f"[Client] 회전 신호 수신: '{recv}'")
                             if recv == "s":
                                 break
+                        time.sleep(0.1)
+                        timeout_count += 1
+                        if timeout_count > 100:  # 10초 타임아웃
+                            print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
+                            break
                     time.sleep(0.5)
                 
                 # 첫 번째 마커로 복귀 (후진, 뒷카메라)
