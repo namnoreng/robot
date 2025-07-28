@@ -21,7 +21,7 @@ def flush_camera(cap, num=5):
     for _ in range(num):
         cap.read()
 
-def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, camera_matrix, dist_coeffs):
+def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, camera_matrix, dist_coeffs, is_back_camera=False):
     FRAME_CENTER_X = 640   # 1280x720 해상도 기준
     FRAME_CENTER_Y = 360
     CENTER_TOLERANCE = 30  # 중앙 허용 오차 (픽셀)
@@ -32,7 +32,8 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
     marker_lost_count = 0  # 마커를 놓친 프레임 수
     MAX_LOST_FRAMES = 10  # 마커를 놓쳤을 때 최대 대기 프레임
     
-    print(f"[Initialize] 마커 {marker_index} 기준 로봇 초기화 시작")
+    camera_type = "뒷카메라" if is_back_camera else "전방카메라"
+    print(f"[Initialize] 마커 {marker_index} 기준 로봇 초기화 시작 ({camera_type})")
 
     while True:
         ret, frame = cap.read()
@@ -53,62 +54,78 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
             dx = center_x - FRAME_CENTER_X
             angle_error = z_angle
 
-            print(f"[Initialize] 중심 오차: ({dx}), 각도 오차: {angle_error:.2f}")
+            print(f"[Initialize] 중심 오차: ({dx}), 각도 오차: {angle_error:.2f} ({camera_type})")
 
             # 1. 회전값 먼저 맞추기
             if abs(angle_error) > ANGLE_TOLERANCE:
                 if angle_error > 0:
-                    print("[Initialize] 좌회전")
+                    print(f"[Initialize] 좌회전 ({camera_type})")
                     serial_server.write('3'.encode())
                 else:
-                    print("[Initialize] 우회전")
+                    print(f"[Initialize] 우회전 ({camera_type})")
                     serial_server.write('4'.encode())
                 time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
 
-            # 2. 회전이 맞으면 중앙값 맞추기
+            # 2. 회전이 맞으면 중앙값 맞추기 (뒷카메라일 때는 좌우 명령 반대)
             if abs(dx) > CENTER_TOLERANCE:
                 if dx > 0:
-                    print("[Initialize] 오른쪽으로 이동")
-                    serial_server.write('6'.encode())
+                    if is_back_camera:
+                        print(f"[Initialize] 왼쪽으로 이동 ({camera_type} - 반대 명령)")
+                        serial_server.write('5'.encode())  # 뒷카메라: 반대 명령
+                    else:
+                        print(f"[Initialize] 오른쪽으로 이동 ({camera_type})")
+                        serial_server.write('6'.encode())  # 전방카메라: 정상 명령
                 else:
-                    print("[Initialize] 왼쪽으로 이동")
-                    serial_server.write('5'.encode())
+                    if is_back_camera:
+                        print(f"[Initialize] 오른쪽으로 이동 ({camera_type} - 반대 명령)")
+                        serial_server.write('6'.encode())  # 뒷카메라: 반대 명령
+                    else:
+                        print(f"[Initialize] 왼쪽으로 이동 ({camera_type})")
+                        serial_server.write('5'.encode())  # 전방카메라: 정상 명령
                 time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 중앙이 맞을 때까지 반복
 
             # 3. 둘 다 맞으면 정지
-            print("[Initialize] 초기화 완료: 중앙+수직")
+            print(f"[Initialize] 초기화 완료: 중앙+수직 ({camera_type})")
             serial_server.write('9'.encode())  # 정지 명령
             break
 
         else:
             # 마커를 찾지 못했을 때
             marker_lost_count += 1
-            print(f"[Initialize] 마커를 찾지 못했습니다. ({marker_lost_count}/{MAX_LOST_FRAMES})")
+            print(f"[Initialize] 마커를 찾지 못했습니다. ({marker_lost_count}/{MAX_LOST_FRAMES}) ({camera_type})")
             
             if marker_lost_count >= MAX_LOST_FRAMES and last_marker_position is not None:
                 # 마커를 일정 시간 이상 놓쳤고, 마지막 위치 정보가 있을 때
                 last_x, last_y = last_marker_position
                 
-                print(f"[Initialize] 마커 재탐색 중... 마지막 위치: ({last_x}, {last_y})")
+                print(f"[Initialize] 마커 재탐색 중... 마지막 위치: ({last_x}, {last_y}) ({camera_type})")
                 
-                # 마지막 위치를 기준으로 이동 방향 결정
+                # 마지막 위치를 기준으로 이동 방향 결정 (뒷카메라일 때는 좌우 명령 반대)
                 if last_x < FRAME_CENTER_X - 100:  # 마커가 왼쪽에 있었음
-                    print("[Initialize] 마커가 왼쪽에 있었음 - 왼쪽으로 이동")
-                    serial_server.write('5'.encode())  # 왼쪽으로 이동
+                    if is_back_camera:
+                        print(f"[Initialize] 마커가 왼쪽에 있었음 - 오른쪽으로 이동 ({camera_type} - 반대 명령)")
+                        serial_server.write('6'.encode())  # 뒷카메라: 반대 명령
+                    else:
+                        print(f"[Initialize] 마커가 왼쪽에 있었음 - 왼쪽으로 이동 ({camera_type})")
+                        serial_server.write('5'.encode())  # 전방카메라: 정상 명령
                 elif last_x > FRAME_CENTER_X + 100:  # 마커가 오른쪽에 있었음
-                    print("[Initialize] 마커가 오른쪽에 있었음 - 오른쪽으로 이동")
-                    serial_server.write('6'.encode())  # 오른쪽으로 이동
+                    if is_back_camera:
+                        print(f"[Initialize] 마커가 오른쪽에 있었음 - 왼쪽으로 이동 ({camera_type} - 반대 명령)")
+                        serial_server.write('5'.encode())  # 뒷카메라: 반대 명령
+                    else:
+                        print(f"[Initialize] 마커가 오른쪽에 있었음 - 오른쪽으로 이동 ({camera_type})")
+                        serial_server.write('6'.encode())  # 전방카메라: 정상 명령
                 elif last_y < FRAME_CENTER_Y - 100:  # 마커가 위쪽에 있었음
-                    print("[Initialize] 마커가 위쪽에 있었음 - 전진")
+                    print(f"[Initialize] 마커가 위쪽에 있었음 - 전진 ({camera_type})")
                     serial_server.write('1'.encode())  # 전진
                 elif last_y > FRAME_CENTER_Y + 100:  # 마커가 아래쪽에 있었음
-                    print("[Initialize] 마커가 아래쪽에 있었음 - 후진")
+                    print(f"[Initialize] 마커가 아래쪽에 있었음 - 후진 ({camera_type})")
                     serial_server.write('2'.encode())  # 후진
                 else:
                     # 중앙 근처에서 사라진 경우 - 약간 후진해서 시야 확보
-                    print("[Initialize] 마커가 중앙에서 사라짐 - 후진하여 시야 확보")
+                    print(f"[Initialize] 마커가 중앙에서 사라짐 - 후진하여 시야 확보 ({camera_type})")
                     serial_server.write('2'.encode())  # 후진
                 
                 time.sleep(0.5)  # 이동 후 잠시 대기
@@ -117,7 +134,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
                 
             elif marker_lost_count >= MAX_LOST_FRAMES * 2:
                 # 너무 오래 못 찾으면 정지
-                print("[Initialize] 마커를 찾을 수 없어 초기화를 중단합니다.")
+                print(f"[Initialize] 마커를 찾을 수 없어 초기화를 중단합니다. ({camera_type})")
                 serial_server.write('9'.encode())  # 정지 명령
                 break
             else:
