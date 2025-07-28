@@ -489,7 +489,7 @@ try:
                 # 6. 최종 위치 조정 (마커 17로 이동 - 초기 대기 위치)
                 print("[Client] 최종 대기 위치로 이동...")
                 if serial_server is not None:
-                    driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, 3, serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 
                 print("[Client] 제자리 복귀 완료!")
                 

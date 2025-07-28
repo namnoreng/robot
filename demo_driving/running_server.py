@@ -137,11 +137,7 @@ def handle_client(client_socket, addr):
                         # 출차 완료: OUT_DONE,1,left,1,left,1111
                         _, sector, side, subzone, direction, car_number = msg.split(",")
                         # 실제로 자리 비우기 (로봇이 출차 완료했으므로)
-                        sector_idx = int(sector) - 1
-                        subzone_idx = int(subzone) - 1
-                        target_space = getattr(find_destination.parking_lot[sector_idx], side)[subzone_idx]
-                        space = getattr(target_space, direction)
-                        space.car_number = None  # 자리 비우기
+                        find_destination.park_car_at(find_destination.parking_lot, sector, side, subzone, direction, "")
                         print(f"[서버] 차량 {car_number}를 {sector},{side},{subzone},{direction}에서 출차 완료")
                         
                         android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
