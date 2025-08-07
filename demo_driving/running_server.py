@@ -14,7 +14,6 @@ app_clients = {}  # {번호: addr}
 robot_clients = {}  # {번호: addr}
 app_counter = 1
 robot_counter = 1
-mode = "register"
 
 PARKING_STATUS_FILE = "parking_status.json"
 
@@ -52,47 +51,47 @@ def reset_all_parking():
     print("[서버] 모든 주차공간이 초기화되었습니다.")
 
 def command_mode():
-    global mode
+    print("[서버] 명령어 모드 시작")
+    print("사용법:")
+    print("  - [app|robot|server] 번호 메시지")
+    print("  - exit: 종료")
+    print("예시: app 1 test_message, robot 1 PARK,1,left,1,left,1234, server 1 IN,1234")
+    
     while True:
-        cmd = input("모드 입력 (register/send/exit 또는 [app|robot|server]번호 메시지): ").strip()
-        if cmd == "register":
-            mode = "register"
-            print("[서버] 신규 기기 등록 모드로 변경")
-        elif cmd == "send":
-            mode = "send"
-            print("[서버] 메시지 전송 모드로 변경")
-        elif cmd == "exit":
+        cmd = input("[서버] 명령 입력: ").strip()
+        
+        if cmd.lower() == "exit":
             print("[서버] 명령어 입력 종료")
             break
-        elif mode == "send":
-            try:
-                parts = cmd.split()
-                if len(parts) < 3:
-                    print("[서버] 입력 형식: [app|robot|server] 번호 메시지")
-                    continue
-                target_type, num, msg = parts[0], int(parts[1]), " ".join(parts[2:])
-                if target_type == "app":
-                    if num in app_clients:
-                        target_addr = app_clients[num]
-                        clients[target_addr][0].sendall((msg + '\n').encode())
-                        print(f"[서버] app #{num}({target_addr})에게 메시지 전송: {msg}")
-                    else:
-                        print(f"[서버] 해당 app 번호 없음: {num}")
-                elif target_type == "robot":
-                    if num in robot_clients:
-                        target_addr = robot_clients[num]
-                        clients[target_addr][0].sendall((msg + '\n').encode())
-                        print(f"[서버] robot #{num}({target_addr})에게 메시지 전송: {msg}")
-                    else:
-                        print(f"[서버] 해당 robot 번호 없음: {num}")
-                elif target_type == "server":
-                    message_handler.handle_server_command(msg, clients, app_clients, robot_clients, save_parking_status, export_parking_status, reset_all_parking)
+            
+        try:
+            parts = cmd.split()
+            if len(parts) < 3:
+                print("[서버] 입력 형식: [app|robot|server] 번호 메시지")
+                continue
+                
+            target_type, num, msg = parts[0], int(parts[1]), " ".join(parts[2:])
+            
+            if target_type == "app":
+                if num in app_clients:
+                    target_addr = app_clients[num]
+                    clients[target_addr][0].sendall((msg + '\n').encode())
+                    print(f"[서버] app #{num}({target_addr})에게 메시지 전송: {msg}")
                 else:
-                    print("[서버] 대상은 app, robot, server만 가능합니다.")
-            except Exception as e:
-                print(f"[서버] 오류: {e}")
-        else:
-            print("[서버] 알 수 없는 명령입니다.")
+                    print(f"[서버] 해당 app 번호 없음: {num}")
+            elif target_type == "robot":
+                if num in robot_clients:
+                    target_addr = robot_clients[num]
+                    clients[target_addr][0].sendall((msg + '\n').encode())
+                    print(f"[서버] robot #{num}({target_addr})에게 메시지 전송: {msg}")
+                else:
+                    print(f"[서버] 해당 robot 번호 없음: {num}")
+            elif target_type == "server":
+                message_handler.handle_server_command(msg, clients, app_clients, robot_clients, save_parking_status, export_parking_status, reset_all_parking)
+            else:
+                print("[서버] 대상은 app, robot, server만 가능합니다.")
+        except Exception as e:
+            print(f"[서버] 오류: {e}")
 
 def export_parking_status():
     status = {}
