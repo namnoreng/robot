@@ -277,20 +277,11 @@ dist_coeffs = dist_front_coeffs
 # 현재 0.17m로 측정되는데 실제는 0.10m이므로 비율 계산: 0.05 * (0.10/0.17) ≈ 0.029
 MARKER_LENGTH = 0.029  # 마커 실제 길이(m) - 조정된 값
 
-# 잔상 최소화를 위한 변수들 (플랫폼별 설정)
+# 잔상 최소화를 위한 변수들 (단순화)
 prev_frame = None
 frame_count = 0
-sync_buffer = []  # 프레임 동기화를 위한 버퍼
 
-# 플랫폼별 동기화 주기 설정
-if current_platform == "Linux":  # Jetson 환경
-    SYNC_INTERVAL = 60  # Jetson에서는 더 긴 주기로 동기화 (60프레임마다)
-    BUFFER_CLEAR_COUNT = 1  # 제한적인 버퍼 클리어
-    print("Jetson 환경: 60프레임 주기 동기화")
-else:
-    SYNC_INTERVAL = 30  # Windows에서는 30프레임마다
-    BUFFER_CLEAR_COUNT = 3
-    print("Windows 환경: 30프레임 주기 동기화")
+print("동기화 로직 비활성화 - 단순 프레임 처리 모드")
 
 # 메인 루프 - 안정성 강화
 print("=== 메인 루프 시작 ===")
@@ -321,46 +312,8 @@ while True:
 
     frame_count += 1
     
-    # 플랫폼별 프레임 동기화 개선
-    if frame_count % SYNC_INTERVAL == 0:  # 플랫폼별 주기로 동기화
-        try:
-            if current_platform == "Linux":  # Jetson 환경
-                # Jetson에서는 매우 제한적인 버퍼 클리어
-                if cap.grab():  # 단 1개의 프레임만 스킵
-                    ret, frame = cap.read()
-                    if not ret:
-                        continue
-                # Jetson에서는 동기화 후 잠시 대기
-                time.sleep(0.01)  # 10ms 대기로 시스템 안정화
-            else:
-                # Windows 환경 - 기존 로직 유지
-                for _ in range(BUFFER_CLEAR_COUNT):
-                    if not cap.grab():
-                        break
-                ret, frame = cap.read()
-                if not ret:
-                    continue
-        except Exception as e:
-            print(f"버퍼 클리어 중 오류: {e}")
-            continue
-    
-    # 프레임 안정성 확인 (Jetson에서는 더 관대한 설정)
-    if prev_frame is not None:
-        try:
-            diff = cv.absdiff(cv.cvtColor(frame, cv.COLOR_BGR2GRAY), 
-                             cv.cvtColor(prev_frame, cv.COLOR_BGR2GRAY))
-            
-            if current_platform == "Linux":  # Jetson 환경
-                threshold = 0.5  # Jetson에서는 더 낮은 임계값 (더 관대)
-            else:
-                threshold = 1.0  # Windows 환경
-                
-            if np.mean(diff) < threshold:  # 플랫폼별 임계값 적용
-                continue
-        except Exception as e:
-            print(f"프레임 비교 중 오류: {e}")
-    
-    prev_frame = frame.copy()
+    # 동기화 로직 제거 - 단순 프레임 처리만 수행
+    # 이전 프레임과의 비교도 제거하여 최대한 단순화
 
     try:
         # 마커 검출 및 거리 계산 (플랫폼별 최적화)
@@ -415,8 +368,8 @@ while True:
         else:
             cv.putText(display_frame, "No marker detected", (10, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
-        # 프레임 상태 표시 (플랫폼별 정보 추가)
-        status_text = f"Frame: {frame_count} | Platform: {current_platform}"
+        # 프레임 상태 표시 (단순화)
+        status_text = f"Frame: {frame_count} (No Sync)"
         cv.putText(display_frame, status_text, (10, display_frame.shape[0]-20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
 
         cv.imshow("ArUco Distance Test", display_frame)
@@ -430,17 +383,11 @@ while True:
     if key == 27:  # ESC 키
         print("ESC 키로 종료")
         break
-    elif key == ord('r'):  # 'r' 키로 카메라 버퍼 리셋
+    elif key == ord('r'):  # 'r' 키로 카메라 버퍼 리셋 (단순화)
         try:
-            if current_platform == "Linux":  # Jetson 환경
-                # Jetson에서는 부드러운 버퍼 리셋
-                cap.grab()
-                print("Jetson: 부드러운 버퍼 리셋 완료")
-            else:
-                # Windows 환경 - 기존 로직
-                for _ in range(5):
-                    cap.grab()
-                print("Windows: 카메라 버퍼 리셋 완료")
+            # 단순한 버퍼 리셋 (플랫폼 구분 없이)
+            cap.grab()
+            print("간단한 버퍼 리셋 완료")
         except Exception as e:
             print(f"버퍼 리셋 실패: {e}")
     elif key == ord('q'):  # 'q' 키로도 종료 가능
