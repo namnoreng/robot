@@ -129,7 +129,7 @@ if current_platform == "Windows":
     cap_front = cv.VideoCapture(camera_index, cv.CAP_DSHOW)
 else:
     # Jetson Nano에서 V4L2 백엔드 사용
-    cap_front = cv.VideoCapture(camera_index)
+    cap_front = cv.VideoCapture(0,cv.CAP_V4L2)
 
 # 초기 설정 전에 카메라 연결 확인
 if not cap_front.isOpened():
