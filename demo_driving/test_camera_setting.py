@@ -156,11 +156,11 @@ for i in range(10):
 # 이제 원하는 해상도로 설정 (플랫폼별 최적화)
 print("목표 해상도 설정...")
 if current_platform == "Linux":  # Jetson 환경
-    # Jetson에서는 단계적 해상도 증가로 안정성 확보
+    # Jetson에서도 30fps로 시도 (동기화 로직 제거로 안정성 확보)
     cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
     cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-    cap_front.set(cv.CAP_PROP_FPS, 15)  # Jetson에서는 낮은 FPS로 안정성 우선
-    print("Jetson 환경: 1280x720@15fps 설정")
+    cap_front.set(cv.CAP_PROP_FPS, 30)  # 30fps로 향상
+    print("Jetson 환경: 1280x720@30fps 설정 (향상된 성능)")
 else:
     # Windows 환경
     cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
@@ -168,9 +168,10 @@ else:
     cap_front.set(cv.CAP_PROP_FPS, 30)
     print("Windows 환경: 1280x720@30fps 설정")
 
-# 플랫폼별 버퍼 설정
+# 플랫폼별 버퍼 설정 (30fps 최적화)
 if current_platform == "Linux":  # Jetson 환경
-    cap_front.set(cv.CAP_PROP_BUFFERSIZE, 2)  # Jetson에서는 약간 큰 버퍼로 안정성 확보
+    cap_front.set(cv.CAP_PROP_BUFFERSIZE, 1)  # 30fps에서는 최소 버퍼로 지연 최소화
+    print("Jetson: 최소 버퍼 설정 (30fps 최적화)")
 else:
     cap_front.set(cv.CAP_PROP_BUFFERSIZE, 1)  # Windows에서는 최소 버퍼
 
@@ -180,10 +181,10 @@ try:
     cap_front.set(cv.CAP_PROP_FOCUS, 0)      # 포커스 고정
     
     if current_platform == "Linux":  # Jetson 환경
-        # Jetson에서는 보수적인 설정
-        cap_front.set(cv.CAP_PROP_EXPOSURE, -5)   # 약간 긴 노출 시간 (안정성 우선)
+        # Jetson에서도 30fps 지원을 위한 최적화된 설정
+        cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 30fps에 맞춘 노출 시간
         # MJPEG 설정 생략 (Jetson에서 호환성 문제 가능성)
-        print("Jetson용 카메라 설정 적용")
+        print("Jetson용 30fps 최적화 설정 적용")
     else:
         # Windows 환경
         cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 짧은 노출 시간
@@ -196,10 +197,11 @@ except Exception as e:
 # 전방 카메라 수동 설정 적용 (플랫폼별 최적화)
 try:
     if current_platform == "Linux":  # Jetson 환경
-        # Jetson에서는 보수적인 설정으로 안정성 우선
+        # Jetson에서도 30fps를 위한 최적화된 수동 설정
         configure_camera_manual_settings(cap_front, "전방 카메라", 
-                                        exposure=-5, wb_temp=4000, brightness=128, 
-                                        contrast=128, saturation=128, gain=10)
+                                        exposure=-6, wb_temp=4000, brightness=128, 
+                                        contrast=128, saturation=128, gain=15)
+        print("Jetson: 30fps 최적화된 카메라 설정")
     else:
         # Windows 환경 - 기존 설정 유지
         configure_camera_manual_settings(cap_front, "전방 카메라", 
@@ -281,7 +283,7 @@ MARKER_LENGTH = 0.029  # 마커 실제 길이(m) - 조정된 값
 prev_frame = None
 frame_count = 0
 
-print("동기화 로직 비활성화 - 단순 프레임 처리 모드")
+print("동기화 로직 비활성화 - 30fps 고성능 모드")
 
 # 메인 루프 - 안정성 강화
 print("=== 메인 루프 시작 ===")
@@ -368,8 +370,8 @@ while True:
         else:
             cv.putText(display_frame, "No marker detected", (10, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
-        # 프레임 상태 표시 (단순화)
-        status_text = f"Frame: {frame_count} (No Sync)"
+        # 프레임 상태 표시 (30fps 모드)
+        status_text = f"Frame: {frame_count} (30fps Mode)"
         cv.putText(display_frame, status_text, (10, display_frame.shape[0]-20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
 
         cv.imshow("ArUco Distance Test", display_frame)
