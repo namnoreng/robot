@@ -199,16 +199,36 @@ dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
 print("Loaded front camera matrix : \n", camera_front_matrix)
 print("Loaded front distortion coefficients : \n", dist_front_coeffs)
 
-# OpenCV 버전에 따라 ArUco 파라미터 생성 방식 분기
+# OpenCV 버전 및 플랫폼에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv.__version__.split(".")
-if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+print(f"OpenCV 버전: {cv.__version__}, 플랫폼: {current_platform}")
+
+# 플랫폼별 분기 처리 (Jetson의 경우 특별 처리)
+if current_platform == "Linux":  # Jetson Nano/Xavier 등
+    print("Jetson (Linux) 환경 - DetectorParameters_create() 사용")
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters_create()
+    
+    # Jetson용 파라미터 조정 (성능 최적화)
+    param_markers.adaptiveThreshWinSizeMin = 3
+    param_markers.adaptiveThreshWinSizeMax = 23
+    param_markers.adaptiveThreshWinSizeStep = 10
+    param_markers.adaptiveThreshConstant = 7
+    param_markers.minMarkerPerimeterRate = 0.03
+    param_markers.maxMarkerPerimeterRate = 4.0
+    param_markers.polygonalApproxAccuracyRate = 0.03
+    param_markers.minCornerDistanceRate = 0.05
+    
+elif int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+    print("OpenCV 3.2.x 이하 - 레거시 방식 사용")
     marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters_create()
 else:
+    print("OpenCV 4.x (Windows) - 신규 방식 사용")
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters()
     
-    # ArUco 검출 파라미터 조정 (검출 성능 향상)
+    # Windows용 ArUco 검출 파라미터 조정 (검출 성능 향상)
     param_markers.adaptiveThreshWinSizeMin = 3
     param_markers.adaptiveThreshWinSizeMax = 23
     param_markers.adaptiveThreshWinSizeStep = 10
