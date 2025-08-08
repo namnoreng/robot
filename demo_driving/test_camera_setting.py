@@ -128,8 +128,10 @@ print(f"카메라 인덱스 {camera_index} 사용")
 if current_platform == "Windows":
     cap_front = cv.VideoCapture(camera_index, cv.CAP_DSHOW)
 else:
-    # Jetson Nano에서 V4L2 백엔드 사용
-    cap_front = cv.VideoCapture(0,cv.CAP_V4L2)
+    # Jetson Nano에서 V4L2 백엔드 사용 - 최적화된 설정
+    cap_front = cv.VideoCapture(camera_index, cv.CAP_V4L2)
+    # Jetson용 추가 최적화 설정
+    print("Jetson 환경 - V4L2 백엔드 사용")
 
 # 초기 설정 전에 카메라 연결 확인
 if not cap_front.isOpened():
@@ -151,30 +153,58 @@ for i in range(10):
         print(f"프레임 {i+1}/10 읽기 실패")
     time.sleep(0.1)
 
-# 이제 원하는 해상도로 설정
+# 이제 원하는 해상도로 설정 (플랫폼별 최적화)
 print("목표 해상도 설정...")
-cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+if current_platform == "Linux":  # Jetson 환경
+    # Jetson에서는 단계적 해상도 증가로 안정성 확보
+    cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+    cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+    cap_front.set(cv.CAP_PROP_FPS, 15)  # Jetson에서는 낮은 FPS로 안정성 우선
+    print("Jetson 환경: 1280x720@15fps 설정")
+else:
+    # Windows 환경
+    cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+    cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+    cap_front.set(cv.CAP_PROP_FPS, 30)
+    print("Windows 환경: 1280x720@30fps 설정")
 
-# 잔상 최소화를 위한 추가 설정
-cap_front.set(cv.CAP_PROP_BUFFERSIZE, 1)  # 버퍼 크기 최소화로 지연 감소
+# 플랫폼별 버퍼 설정
+if current_platform == "Linux":  # Jetson 환경
+    cap_front.set(cv.CAP_PROP_BUFFERSIZE, 2)  # Jetson에서는 약간 큰 버퍼로 안정성 확보
+else:
+    cap_front.set(cv.CAP_PROP_BUFFERSIZE, 1)  # Windows에서는 최소 버퍼
 
-# 프레임 동기화 및 rolling shutter 문제 해결
+# 프레임 동기화 및 rolling shutter 문제 해결 (플랫폼별 최적화)
 try:
     cap_front.set(cv.CAP_PROP_AUTOFOCUS, 0)  # 오토포커스 비활성화
     cap_front.set(cv.CAP_PROP_FOCUS, 0)      # 포커스 고정
     
-    # Rolling shutter 효과 최소화를 위한 설정
-    cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 노출 시간을 짧게 (rolling shutter 효과 감소)
-    
-    # 추가 동기화 설정
-    cap_front.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))  # MJPEG 코덱 사용
+    if current_platform == "Linux":  # Jetson 환경
+        # Jetson에서는 보수적인 설정
+        cap_front.set(cv.CAP_PROP_EXPOSURE, -5)   # 약간 긴 노출 시간 (안정성 우선)
+        # MJPEG 설정 생략 (Jetson에서 호환성 문제 가능성)
+        print("Jetson용 카메라 설정 적용")
+    else:
+        # Windows 환경
+        cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 짧은 노출 시간
+        cap_front.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))  # MJPEG 코덱 사용
+        print("Windows용 카메라 설정 적용")
+        
 except Exception as e:
     print(f"카메라 고급 설정 실패: {e}")
 
-# 전방 카메라 수동 설정 적용 (잔상 최소화 및 적절한 밝기 조정)
+# 전방 카메라 수동 설정 적용 (플랫폼별 최적화)
 try:
-    configure_camera_manual_settings(cap_front, "전방 카메라", exposure=-6, wb_temp=4000, brightness=120, contrast=130, saturation=128, gain=20)
+    if current_platform == "Linux":  # Jetson 환경
+        # Jetson에서는 보수적인 설정으로 안정성 우선
+        configure_camera_manual_settings(cap_front, "전방 카메라", 
+                                        exposure=-5, wb_temp=4000, brightness=128, 
+                                        contrast=128, saturation=128, gain=10)
+    else:
+        # Windows 환경 - 기존 설정 유지
+        configure_camera_manual_settings(cap_front, "전방 카메라", 
+                                        exposure=-6, wb_temp=4000, brightness=120, 
+                                        contrast=130, saturation=128, gain=20)
 except Exception as e:
     print(f"카메라 수동 설정 실패: {e}")
 
@@ -247,10 +277,20 @@ dist_coeffs = dist_front_coeffs
 # 현재 0.17m로 측정되는데 실제는 0.10m이므로 비율 계산: 0.05 * (0.10/0.17) ≈ 0.029
 MARKER_LENGTH = 0.029  # 마커 실제 길이(m) - 조정된 값
 
-# 잔상 최소화를 위한 변수들
+# 잔상 최소화를 위한 변수들 (플랫폼별 설정)
 prev_frame = None
 frame_count = 0
 sync_buffer = []  # 프레임 동기화를 위한 버퍼
+
+# 플랫폼별 동기화 주기 설정
+if current_platform == "Linux":  # Jetson 환경
+    SYNC_INTERVAL = 60  # Jetson에서는 더 긴 주기로 동기화 (60프레임마다)
+    BUFFER_CLEAR_COUNT = 1  # 제한적인 버퍼 클리어
+    print("Jetson 환경: 60프레임 주기 동기화")
+else:
+    SYNC_INTERVAL = 30  # Windows에서는 30프레임마다
+    BUFFER_CLEAR_COUNT = 3
+    print("Windows 환경: 30프레임 주기 동기화")
 
 # 메인 루프 - 안정성 강화
 print("=== 메인 루프 시작 ===")
@@ -281,25 +321,41 @@ while True:
 
     frame_count += 1
     
-    # 프레임 동기화 개선 - 버퍼 완전 클리어 (주기 늘림)
-    if frame_count % 30 == 0:  # 30프레임마다 동기화 (부하 감소)
+    # 플랫폼별 프레임 동기화 개선
+    if frame_count % SYNC_INTERVAL == 0:  # 플랫폼별 주기로 동기화
         try:
-            for _ in range(3):  # 제한된 버퍼 클리어
-                if not cap.grab():
-                    break
-            ret, frame = cap.read()  # 새로운 프레임 읽기
-            if not ret:
-                continue
+            if current_platform == "Linux":  # Jetson 환경
+                # Jetson에서는 매우 제한적인 버퍼 클리어
+                if cap.grab():  # 단 1개의 프레임만 스킵
+                    ret, frame = cap.read()
+                    if not ret:
+                        continue
+                # Jetson에서는 동기화 후 잠시 대기
+                time.sleep(0.01)  # 10ms 대기로 시스템 안정화
+            else:
+                # Windows 환경 - 기존 로직 유지
+                for _ in range(BUFFER_CLEAR_COUNT):
+                    if not cap.grab():
+                        break
+                ret, frame = cap.read()
+                if not ret:
+                    continue
         except Exception as e:
             print(f"버퍼 클리어 중 오류: {e}")
             continue
     
-    # 프레임 안정성 확인 (동일한 프레임 연속 체크 방지)
+    # 프레임 안정성 확인 (Jetson에서는 더 관대한 설정)
     if prev_frame is not None:
         try:
             diff = cv.absdiff(cv.cvtColor(frame, cv.COLOR_BGR2GRAY), 
                              cv.cvtColor(prev_frame, cv.COLOR_BGR2GRAY))
-            if np.mean(diff) < 1:  # 프레임이 거의 동일하면 스킵
+            
+            if current_platform == "Linux":  # Jetson 환경
+                threshold = 0.5  # Jetson에서는 더 낮은 임계값 (더 관대)
+            else:
+                threshold = 1.0  # Windows 환경
+                
+            if np.mean(diff) < threshold:  # 플랫폼별 임계값 적용
                 continue
         except Exception as e:
             print(f"프레임 비교 중 오류: {e}")
@@ -307,15 +363,19 @@ while True:
     prev_frame = frame.copy()
 
     try:
-        # 마커 검출 및 거리 계산
-        # 단순한 전처리 (프레임 동기화에 집중)
+        # 마커 검출 및 거리 계산 (플랫폼별 최적화)
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         
-        # 가벼운 노이즈 제거만 적용
-        blurred = cv.GaussianBlur(gray, (3, 3), 0)
+        # 플랫폼별 이미지 전처리
+        if current_platform == "Linux":  # Jetson 환경
+            # Jetson에서는 최소한의 전처리 (성능 우선)
+            processed_frame = gray
+        else:
+            # Windows 환경 - 가벼운 노이즈 제거
+            processed_frame = cv.GaussianBlur(gray, (3, 3), 0)
         
         # 마커 검출
-        corners, ids, _ = aruco.detectMarkers(blurred, marker_dict, parameters=param_markers)
+        corners, ids, _ = aruco.detectMarkers(processed_frame, marker_dict, parameters=param_markers)
         distance_text = "No marker detected"
 
         if ids is not None:
@@ -355,8 +415,8 @@ while True:
         else:
             cv.putText(display_frame, "No marker detected", (10, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
-        # 프레임 상태 표시
-        status_text = f"Frame: {frame_count}"
+        # 프레임 상태 표시 (플랫폼별 정보 추가)
+        status_text = f"Frame: {frame_count} | Platform: {current_platform}"
         cv.putText(display_frame, status_text, (10, display_frame.shape[0]-20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
 
         cv.imshow("ArUco Distance Test", display_frame)
@@ -372,9 +432,15 @@ while True:
         break
     elif key == ord('r'):  # 'r' 키로 카메라 버퍼 리셋
         try:
-            for _ in range(5):
+            if current_platform == "Linux":  # Jetson 환경
+                # Jetson에서는 부드러운 버퍼 리셋
                 cap.grab()
-            print("카메라 버퍼 리셋 완료")
+                print("Jetson: 부드러운 버퍼 리셋 완료")
+            else:
+                # Windows 환경 - 기존 로직
+                for _ in range(5):
+                    cap.grab()
+                print("Windows: 카메라 버퍼 리셋 완료")
         except Exception as e:
             print(f"버퍼 리셋 실패: {e}")
     elif key == ord('q'):  # 'q' 키로도 종료 가능
