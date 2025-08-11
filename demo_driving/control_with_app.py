@@ -85,52 +85,171 @@ if serial_port:
         print(f"Serial communication error: {e}")
         serial_server = None
 
-# 카메라 초기화 (윈도우/리눅스 분기)
+# 카메라 초기화 (윈도우/리눅스 분기) - 안정성 및 성능 강화
+print("=== 카메라 초기화 시작 ===")
+
+# 먼저 사용 가능한 카메라 인덱스 확인
+available_cameras = []
+for i in range(5):  # 0~4번 카메라 테스트
+    test_cap = cv.VideoCapture(i)
+    if test_cap.isOpened():
+        available_cameras.append(i)
+        test_cap.release()
+    time.sleep(0.1)  # 짧은 대기
+
+print(f"사용 가능한 카메라: {available_cameras}")
+
+if len(available_cameras) == 0:
+    print("❌ 사용 가능한 카메라가 없습니다.")
+    exit(1)
+
+# 카메라 초기화
 if current_platform == "Windows":
-    cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)
-    cap_back = cv.VideoCapture(1, cv.CAP_DSHOW)
+    cap_front = cv.VideoCapture(0, cv.CAP_DSHOW) if 0 in available_cameras else None
+    cap_back = cv.VideoCapture(1, cv.CAP_DSHOW) if 1 in available_cameras else None
 else:
     # Jetson Nano에서 V4L2 백엔드 사용
-    cap_front = cv.VideoCapture(0, cv.CAP_V4L2)
-    cap_back = cv.VideoCapture(1, cv.CAP_V4L2)
+    cap_front = cv.VideoCapture(0, cv.CAP_V4L2) if 0 in available_cameras else None
+    cap_back = cv.VideoCapture(1, cv.CAP_V4L2) if 1 in available_cameras else None
+    print("Jetson 환경 - V4L2 백엔드 사용")
+
+if cap_front is None or not cap_front.isOpened():
+    print("❌ 전방 카메라 초기 연결 실패")
+    exit(1)
+
+# 기본 해상도로 먼저 설정 (안정성 우선)
+cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 640)
+cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
+cap_front.set(cv.CAP_PROP_FPS, 30)
+
+# 전방 카메라 안정화
+print("전방 카메라 안정화 중...")
+for i in range(10):
+    ret, frame = cap_front.read()
+    if ret:
+        print(f"전방 프레임 {i+1}/10 읽기 성공")
+    time.sleep(0.1)
+
+# 이제 원하는 해상도로 설정
+print("전방 카메라 목표 해상도 설정...")
 cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_front.set(cv.CAP_PROP_FPS, 30)
 
-# 전방 카메라 수동 설정 적용
-configure_camera_manual_settings(cap_front, "전방 카메라", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0)
+# 전방 카메라 고급 설정
+try:
+    cap_front.set(cv.CAP_PROP_AUTOFOCUS, 0)  # 오토포커스 비활성화
+    cap_front.set(cv.CAP_PROP_FOCUS, 0)      # 포커스 고정
+    cap_front.set(cv.CAP_PROP_BUFFERSIZE, 1) # 최소 버퍼로 지연 최소화
+    
+    if current_platform == "Linux":  # Jetson 환경
+        cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 30fps에 맞춘 노출 시간
+        print("Jetson용 30fps 최적화 설정 적용")
+    else:
+        # Windows 환경
+        cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 짧은 노출 시간
+        cap_front.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))  # MJPEG 코덱 사용
+        print("Windows용 카메라 설정 적용")
+        
+except Exception as e:
+    print(f"전방 카메라 고급 설정 실패: {e}")
 
-if cap_back is not None:
+# 전방 카메라 수동 설정 적용 (플랫폼별 최적화)
+try:
+    if current_platform == "Linux":  # Jetson 환경
+        configure_camera_manual_settings(cap_front, "전방 카메라", 
+                                        exposure=-6, wb_temp=4000, brightness=128, 
+                                        contrast=128, saturation=128, gain=15)
+    else:
+        # Windows 환경
+        configure_camera_manual_settings(cap_front, "전방 카메라", 
+                                        exposure=-6, wb_temp=4000, brightness=120, 
+                                        contrast=130, saturation=128, gain=20)
+except Exception as e:
+    print(f"전방 카메라 수동 설정 실패: {e}")
+
+# 후방 카메라 설정 (있는 경우)
+if cap_back is not None and cap_back.isOpened():
+    print("후방 카메라 설정 중...")
+    
+    # 기본 해상도로 먼저 설정
+    cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 640)
+    cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
+    cap_back.set(cv.CAP_PROP_FPS, 30)
+    
+    # 후방 카메라 안정화
+    for i in range(10):
+        ret, frame = cap_back.read()
+        if ret:
+            print(f"후방 프레임 {i+1}/10 읽기 성공")
+        time.sleep(0.1)
+    
+    # 목표 해상도 설정
     cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
     cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
     cap_back.set(cv.CAP_PROP_FPS, 30)
     
+    # 후방 카메라 고급 설정
+    try:
+        cap_back.set(cv.CAP_PROP_AUTOFOCUS, 0)
+        cap_back.set(cv.CAP_PROP_FOCUS, 0)
+        cap_back.set(cv.CAP_PROP_BUFFERSIZE, 1)
+        
+        if current_platform == "Linux":
+            cap_back.set(cv.CAP_PROP_EXPOSURE, -6)
+        else:
+            cap_back.set(cv.CAP_PROP_EXPOSURE, -6)
+            cap_back.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+            
+    except Exception as e:
+        print(f"후방 카메라 고급 설정 실패: {e}")
+    
     # 후방 카메라 수동 설정 적용
-    configure_camera_manual_settings(cap_back, "후방 카메라", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0)
+    try:
+        if current_platform == "Linux":
+            configure_camera_manual_settings(cap_back, "후방 카메라", 
+                                            exposure=-6, wb_temp=4000, brightness=128, 
+                                            contrast=128, saturation=128, gain=15)
+        else:
+            configure_camera_manual_settings(cap_back, "후방 카메라", 
+                                            exposure=-6, wb_temp=4000, brightness=120, 
+                                            contrast=130, saturation=128, gain=20)
+    except Exception as e:
+        print(f"후방 카메라 수동 설정 실패: {e}")
+else:
+    cap_back = None
+    print("후방 카메라 사용 불가")
 
-# 카메라가 열릴 때까지 대기 (타임아웃 추가)
-front_timeout = 0
-while not cap_front.isOpened() and front_timeout < 10:  # 10초 타임아웃
-    print("waiting for front camera")
-    time.sleep(1)
-    front_timeout += 1
+# 카메라 상태 최종 확인 및 테스트
+print("=== 카메라 상태 최종 확인 ===")
 
+# 전방 카메라 상태 확인
 if cap_front.isOpened():
-    print("front camera is opened")
+    print("✅ front camera is opened and configured")
+    # 테스트 프레임 읽기
+    ret, test_frame = cap_front.read()
+    if ret and test_frame is not None and test_frame.size > 0:
+        print(f"✅ 전방 카메라 테스트 프레임 읽기 성공 - 크기: {test_frame.shape}")
+    else:
+        print("❌ 전방 카메라 테스트 프레임 읽기 실패")
 else:
     print("❌ front camera 열기 실패 - 프로그램 종료")
     exit(1)
 
-back_timeout = 0
-while not cap_back.isOpened() and back_timeout < 10:  # 10초 타임아웃
-    print("waiting for back camera")
-    time.sleep(1)
-    back_timeout += 1
-
-if cap_back.isOpened():
-    print("back camera is opened")
+# 후방 카메라 상태 확인
+if cap_back is not None and cap_back.isOpened():
+    print("✅ back camera is opened and configured")
+    # 테스트 프레임 읽기
+    ret, test_frame = cap_back.read()
+    if ret and test_frame is not None and test_frame.size > 0:
+        print(f"✅ 후방 카메라 테스트 프레임 읽기 성공 - 크기: {test_frame.shape}")
+    else:
+        print("❌ 후방 카메라 테스트 프레임 읽기 실패")
+        cap_back.release()
+        cap_back = None
+        print("⚠️  후방 카메라 비활성화 - 전방 카메라만 사용")
 else:
-    print("⚠️  back camera 열기 실패 - front camera만 사용")
+    print("⚠️  back camera 사용 불가 - front camera만 사용")
     cap_back = None
 
 # npy 파일 불러오기
@@ -155,14 +274,46 @@ if cap_back is not None:
         cap_back.release()
         cap_back = None
 
-# OpenCV 버전에 따라 ArUco 파라미터 생성 방식 분기
+# OpenCV 버전 및 플랫폼에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv.__version__.split(".")
-if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+print(f"OpenCV 버전: {cv.__version__}, 플랫폼: {current_platform}")
+
+# 플랫폼별 분기 처리 (Jetson의 경우 특별 처리)
+if current_platform == "Linux":  # Jetson Nano/Xavier 등
+    print("Jetson (Linux) 환경 - DetectorParameters_create() 사용")
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters_create()
+    
+    # Jetson용 파라미터 조정 (성능 최적화)
+    param_markers.adaptiveThreshWinSizeMin = 3
+    param_markers.adaptiveThreshWinSizeMax = 23
+    param_markers.adaptiveThreshWinSizeStep = 10
+    param_markers.adaptiveThreshConstant = 7
+    param_markers.minMarkerPerimeterRate = 0.03
+    param_markers.maxMarkerPerimeterRate = 4.0
+    param_markers.polygonalApproxAccuracyRate = 0.03
+    param_markers.minCornerDistanceRate = 0.05
+    
+elif int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+    print("OpenCV 3.2.x 이하 - 레거시 방식 사용")
     marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters_create()
 else:
+    print("OpenCV 4.x (Windows) - 신규 방식 사용")
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters_create()
+    
+    # Windows용 ArUco 검출 파라미터 조정 (검출 성능 향상)
+    param_markers.adaptiveThreshWinSizeMin = 3
+    param_markers.adaptiveThreshWinSizeMax = 23
+    param_markers.adaptiveThreshWinSizeStep = 10
+    param_markers.adaptiveThreshConstant = 7
+    param_markers.minMarkerPerimeterRate = 0.03
+    param_markers.maxMarkerPerimeterRate = 4.0
+    param_markers.polygonalApproxAccuracyRate = 0.03
+    param_markers.minCornerDistanceRate = 0.05
+
+print("=== 카메라 및 ArUco 초기화 완료 ===")
 
 # 클라이언트 소켓 초기화 (서버에 접속)
 host_input = input("Enter server IP (default: 127.0.0.1): ").strip()
@@ -974,6 +1125,32 @@ try:
 except Exception as e:
     print(f"[Client] Error: {e}")
 
-client_socket.close()
-cap_front.release()
-cv.destroyAllWindows()
+# 안전한 프로그램 종료
+print("=== 프로그램 정리 중 ===")
+try:
+    client_socket.close()
+    print("소켓 연결 종료 완료")
+except:
+    pass
+
+try:
+    if cap_front is not None:
+        cap_front.release()
+        print("전방 카메라 해제 완료")
+except:
+    pass
+
+try:
+    if cap_back is not None:
+        cap_back.release()
+        print("후방 카메라 해제 완료")
+except:
+    pass
+
+try:
+    cv.destroyAllWindows()
+    print("OpenCV 윈도우 정리 완료")
+except:
+    pass
+
+print("프로그램 종료 완료")
