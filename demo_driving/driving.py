@@ -3,20 +3,33 @@ import cv2.aruco as aruco
 import numpy as np
 import serial
 import time
+import platform
+
+# 플랫폼 확인
+current_platform = platform.system()
 
 # 마커 크기 설정 - 실제 거리와 맞게 보정
 # 실제 측정값과 비교하여 조정: 0.05 * (실제거리/측정거리) ≈ 0.029
 marker_length = 0.029  # 보정된 마커 실제 길이(m)
 
+# OpenCV 버전 및 플랫폼에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv2.__version__.split(".")
-if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+print(f"OpenCV 버전: {cv2.__version__}, 플랫폼: {current_platform}")
+
+# 플랫폼별 분기 처리 (Jetson의 경우 특별 처리)
+if current_platform == "Linux":  # Jetson Nano/Xavier 등
+    print("Jetson (Linux) 환경 - DetectorParameters_create() 사용")
     marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters_create()
-    print("Using OpenCV 3.x")
+    
+elif int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+    print("OpenCV 3.2.x 이하 - 레거시 방식 사용")
+    marker_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    param_markers = aruco.DetectorParameters_create()
 else:
+    print("OpenCV 4.x (Windows) - 신규 방식 사용")
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters()
-    print("Using OpenCV 4.x")
 
 def flush_camera(cap, num=5):
     for _ in range(num):

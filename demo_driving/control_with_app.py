@@ -301,7 +301,7 @@ elif int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
 else:
     print("OpenCV 4.x (Windows) - 신규 방식 사용")
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
-    param_markers = aruco.DetectorParameters_create()
+    param_markers = aruco.DetectorParameters()
     
     # Windows용 ArUco 검출 파라미터 조정 (검출 성능 향상)
     param_markers.adaptiveThreshWinSizeMin = 3
