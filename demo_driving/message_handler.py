@@ -32,11 +32,7 @@ def handle_server_command(msg, clients, app_clients, robot_clients, save_parking
                 robot_addr = robot_clients[1]
                 robot_sock = clients[robot_addr][0]
                 robot_sock.sendall(f"PARK,{sector},{side},{subzone},{direction},{car_number}\n".encode())
-            android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
-            if 1 in app_clients:
-                app_addr = app_clients[1]
-                app_sock = clients[app_addr][0]
-                app_sock.sendall(f"parked,{android_format},{car_number}\n".encode())
+            # 앱에는 로봇의 DONE 메시지를 받은 후에 parked 메시지 전송
             save_parking_status(export_parking_status())
         else:
             print("[서버] 빈자리가 없습니다.")
@@ -78,12 +74,7 @@ def handle_app_message(msg, clients, app_clients, robot_clients, save_parking_st
                 robot_addr = robot_clients[1]
                 robot_sock = clients[robot_addr][0]
                 robot_sock.sendall(f"PARK,{sector},{side},{subzone},{direction},{car_number}\n".encode())
-            # === 여기서 앱에 메시지 전송 ===
-            android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
-            if 1 in app_clients:
-                app_addr = app_clients[1]
-                app_sock = clients[app_addr][0]
-                app_sock.sendall(f"parked,{android_format},{car_number}\n".encode())
+            # 앱에는 로봇의 DONE 메시지를 받은 후에 parked 메시지 전송
             save_parking_status(export_parking_status())
         else:
             print("[서버] 빈자리가 없습니다.")
