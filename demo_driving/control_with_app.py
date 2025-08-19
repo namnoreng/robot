@@ -11,6 +11,9 @@ from cv2 import aruco
 import driving
 import detect_aruco
 
+# 기본 ArUco 인식 거리 설정 (미터 단위)
+DEFAULT_ARUCO_DISTANCE = 0.15
+
 def configure_camera_manual_settings(cap, camera_name="Camera", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0):
     """
     카메라의 자동 기능을 비활성화하고 수동 설정을 적용하는 함수
@@ -102,6 +105,80 @@ if serial_port:
     except serial.SerialException as e:
         print(f"Serial communication error: {e}")
         serial_server = None
+
+def receive_vehicle_distance_data():
+    """
+    차량 리프팅 후 STM32에서 전송하는 차량과 로봇 간격 데이터를 수신
+    예상 데이터 형식: "150" (mm 단위 정수값, 예: 150mm)
+    """
+    if not serial_server or not serial_server.is_open:
+        print("시리얼 연결이 없어 간격 데이터를 받을 수 없습니다.")
+        return None
+    
+    try:
+        # STM32에서 간격 데이터가 올 때까지 대기 (타임아웃 5초)
+        timeout_start = time.time()
+        buffer = ""
+        
+        while time.time() - timeout_start < 5.0:  # 5초 타임아웃
+            if serial_server.in_waiting > 0:
+                char = serial_server.read().decode()
+                buffer += char
+                
+                # 줄바꿈 문자가 오면 완성된 메시지로 처리
+                if char == '\n' or char == '\r':
+                    message = buffer.strip()
+                    if message.isdigit():  # 숫자인지 확인
+                        try:
+                            distance_mm = int(message)  # mm 단위 정수로 변환
+                            distance_cm = distance_mm / 10.0  # cm 단위로 변환하여 표시
+                            print(f"차량 간격 데이터 수신: {distance_mm}mm ({distance_cm}cm)")
+                            return distance_mm
+                        except ValueError as e:
+                            print(f"간격 데이터 변환 오류: {e}")
+                    elif message:  # 빈 문자열이 아닌 경우만 오류 표시
+                        print(f"간격 데이터 형식 오류: '{message}' (숫자가 아님)")
+                    buffer = ""  # 버퍼 초기화
+            
+            time.sleep(0.01)  # CPU 부하 감소
+        
+        print("차량 간격 데이터 수신 타임아웃 (5초)")
+        return None
+        
+    except Exception as e:
+        print(f"간격 데이터 수신 오류: {e}")
+        return None
+
+def calculate_aruco_target_distance(measured_gap_mm):
+    """
+    측정된 간격을 바탕으로 ArUco 마커 인식 목표 거리를 계산
+    
+    Parameters:
+    - measured_gap_mm: 측정된 차량과 로봇 간격 (mm)
+    
+    Returns:
+    - target_distance: ArUco 마커 인식용 목표 거리 (m 단위)
+    """
+    if measured_gap_mm is None:
+        # 간격 데이터가 없으면 기본값 사용
+        print("[거리 계산] 간격 데이터 없음, 기본 거리 0.38m 사용")
+        return 0.38
+    
+    # 기본 설정값
+    BASE_RECOGNITION_DISTANCE_MM = 150  # 기본 인식 거리 150mm
+    
+    # 실제 인식 거리 계산: 150mm - 현재 간격
+    target_distance_mm = BASE_RECOGNITION_DISTANCE_MM - measured_gap_mm 
+    target_distance_m = target_distance_mm / 1000.0  # mm를 m로 변환
+    
+    # 안전 범위 제한 (0.1m ~ 0.6m)
+    target_distance_m = max(0.1, min(0.6, target_distance_m))
+    
+    print(f"[거리 계산] 측정 간격: {measured_gap_mm}mm")
+    print(f"[거리 계산] 계산된 목표 거리: {target_distance_mm}mm ({target_distance_m:.3f}m)")
+    print(f"[거리 계산] 계산식: 150 - {measured_gap_mm} = {target_distance_mm}mm")
+    
+    return target_distance_m
 
 # 카메라 초기화 (윈도우/리눅스 분기) - 안정성 및 성능 강화
 print("=== 카메라 초기화 시작 ===")
@@ -351,6 +428,18 @@ try:
                             if recv == "a":
                                 print("[Client] 차량 들어올리기 완료!")
                                 
+                                # 리프팅 완료 후 차량 간격 데이터 수신
+                                print("[Client] 차량 간격 데이터 수신 시작...")
+                                distance_mm = receive_vehicle_distance_data()
+                                if distance_mm is not None:
+                                    print(f"[Client] 차량과 로봇 간격: {distance_mm}mm ({distance_mm/10.0}cm)")
+                                    # 간격 데이터를 바탕으로 ArUco 인식 거리 계산
+                                    dynamic_target_distance = calculate_aruco_target_distance(distance_mm)
+                                    print(f"[Client] 동적 ArUco 인식 거리: {dynamic_target_distance:.3f}m")
+                                else:
+                                    print("[Client] 차량 간격 데이터 수신 실패 - 기본 거리 사용")
+                                    dynamic_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
+                                
                                 break
                             else:
                                 print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
@@ -375,7 +464,7 @@ try:
                     serial_server.write(b"1")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.35)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance)
                 
                 # 마커 인식 후 정지
                 client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
@@ -432,7 +521,7 @@ try:
                     serial_server.write(b"1")
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.38)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance)
                 if serial_server is not None:
                     serial_server.write(b"9")
 
@@ -512,14 +601,15 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"2")  # 후진 시작
                 
-                # 뒷카메라로 마커 1번 인식
+                # 뒷카메라로 마커 1번 인식 (동적 거리 사용)
+                print(f"[Client] 동적 인식 거리 {dynamic_target_distance:.3f}m 사용")
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=1, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=1, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=dynamic_target_distance)
                     print("[Client] 뒷카메라로 마커 1번 인식 완료")
                 else:
                     # 뒷카메라가 없으면 전방카메라로 대체
                     print("[Client] 뒷카메라가 없어 전방카메라로 대체")
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=1, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=1, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance)
                     print("[Client] 전방카메라로 마커 1번 인식 완료")
                 
                 if serial_server is not None:
@@ -544,6 +634,19 @@ try:
                             print(f"[Client] 시리얼 수신: '{recv}'")
                             if recv == "c":
                                 print("[Client] 차량 내려놓기 완료!")
+                                
+                                # 내려놓기 완료 후 차량 간격 데이터 업데이트
+                                print("[Client] 내려놓기 후 차량 간격 데이터 수신 시작...")
+                                final_distance_mm = receive_vehicle_distance_data()
+                                if final_distance_mm is not None:
+                                    print(f"[Client] 최종 차량과 로봇 간격: {final_distance_mm}mm ({final_distance_mm/10.0}cm)")
+                                    # 최종 간격 데이터를 바탕으로 복귀 시 사용할 거리 계산
+                                    final_target_distance = calculate_aruco_target_distance(final_distance_mm)
+                                    print(f"[Client] 복귀용 동적 ArUco 인식 거리: {final_target_distance:.3f}m")
+                                else:
+                                    print("[Client] 최종 차량 간격 데이터 수신 실패 - 기본 거리 사용")
+                                    final_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
+                                
                                 break
                             else:
                                 print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
@@ -578,14 +681,14 @@ try:
                 driving.flush_camera(cap_back, 5) if cap_back is not None else None
                 driving.flush_camera(cap_front, 5)
                 print("[Client] 마커 2번 인식 중...")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=2, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.42)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=2, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance)
                 
                 # 마커 2번 인식 후 추가로 직진하여 두 번째 0번 마커 근처로 이동
                 print("[Client] 마커 2번 인식 완료, 추가 직진하여 두 번째 0번 마커로...")
                 
                 # 이제 0번 마커 인식 (두 번째 0번이어야 함)
                 print("[Client] 두 번째 0번 마커 인식 시작...")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.40)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance)
                 
                 # 탈출 성공
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
@@ -628,10 +731,10 @@ try:
                     serial_server.write(b"2")  # 후진 시작
                 # 뒷카메라로 마커 0번 인식
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=0.45)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=dynamic_target_distance)
                 else:
                     print("[Client] 뒷카메라가 없어 전방카메라로 대체")
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=0.45)               
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance)               
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode()) # sector 도착
@@ -767,7 +870,7 @@ try:
                 print("[Client] 첫 번째 마커로 직진 시작")
                 if serial_server is not None:
                     serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=sector, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=DEFAULT_ARUCO_DISTANCE)
                 if serial_server is not None:
                     serial_server.write(b"9")
                 time.sleep(0.5)
@@ -816,7 +919,7 @@ try:
                 # 두 번째 마커까지 직진
                 if serial_server is not None:
                     serial_server.write(b"1")
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=subzone, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=DEFAULT_ARUCO_DISTANCE)
                 if serial_server is not None:
                     serial_server.write(b"9")
                 time.sleep(0.5)
@@ -874,6 +977,19 @@ try:
                             recv = serial_server.read().decode()
                             if recv == "a":
                                 print("[Client] 차량 들어올리기 완료!")
+                                
+                                # 리프팅 완료 후 차량 간격 데이터 수신
+                                print("[Client] 차량 간격 데이터 수신 시작...")
+                                distance_mm = receive_vehicle_distance_data()
+                                if distance_mm is not None:
+                                    print(f"[Client] 차량과 로봇 간격: {distance_mm}mm ({distance_mm/10.0}cm)")
+                                    # 간격 데이터를 바탕으로 ArUco 인식 거리 계산
+                                    dynamic_target_distance_out = calculate_aruco_target_distance(distance_mm)
+                                    print(f"[Client] 동적 ArUco 인식 거리: {dynamic_target_distance_out:.3f}m")
+                                else:
+                                    print("[Client] 차량 간격 데이터 수신 실패 - 기본 거리 사용")
+                                    dynamic_target_distance_out = DEFAULT_ARUCO_DISTANCE  # 기본값
+                                
                                 break
                     
                     # 들어올리기 완료 후 정지 및 안정화
@@ -929,9 +1045,9 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"2")
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=0, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=dynamic_target_distance_out)
                 else:
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=0, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance_out)
                 if serial_server is not None:
                     serial_server.write(b"9")
                     time.sleep(0.5)
@@ -1000,14 +1116,15 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"2")  # 후진 시작
                 
-                # 뒷카메라로 마커 17번 인식
+                # 뒷카메라로 마커 17번 인식 (동적 거리 사용)
+                print(f"[Client] 동적 인식 거리 {dynamic_target_distance_out:.3f}m 사용")
                 if cap_back is not None:
-                    driving.driving(cap_back, marker_dict, param_markers, marker_index=17, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                    driving.driving(cap_back, marker_dict, param_markers, marker_index=17, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, target_distance=dynamic_target_distance_out)
                     print("[Client] 뒷카메라로 마커 17번 인식 완료")
                 else:
                     # 뒷카메라가 없으면 전방카메라로 대체
                     print("[Client] 뒷카메라가 없어 전방카메라로 대체")
-                    driving.driving(cap_front, marker_dict, param_markers, marker_index=17, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                    driving.driving(cap_front, marker_dict, param_markers, marker_index=17, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=dynamic_target_distance_out)
                     print("[Client] 전방카메라로 마커 17번 인식 완료")
                 
                 if serial_server is not None:
@@ -1030,6 +1147,18 @@ try:
                             print(f"[Client] 시리얼 수신: '{recv}'")
                             if recv == "c":
                                 print("[Client] 차량 내려놓기 완료!")
+                                
+                                # 내려놓기 완료 후 차량 간격 데이터 업데이트
+                                print("[Client] 내려놓기 후 차량 간격 데이터 수신 시작...")
+                                final_distance_mm = receive_vehicle_distance_data()
+                                if final_distance_mm is not None:
+                                    print(f"[Client] 최종 차량과 로봇 간격: {final_distance_mm}mm ({final_distance_mm/10.0}cm)")
+                                    # 최종 간격 데이터 확인용 (출차에서는 로그만 기록)
+                                    final_target_distance = calculate_aruco_target_distance(final_distance_mm)
+                                    print(f"[Client] 계산된 ArUco 인식 거리: {final_target_distance:.3f}m")
+                                else:
+                                    print("[Client] 최종 차량 간격 데이터 수신 실패")
+                                
                                 break
                             else:
                                 print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
@@ -1057,7 +1186,7 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진
                 # 로봇 초기 위치까지 전진 (마커 17 인식)
-                driving.driving(cap_front, marker_dict, param_markers, marker_index=17, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                driving.driving(cap_front, marker_dict, param_markers, marker_index=17, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=DEFAULT_ARUCO_DISTANCE)
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                 
@@ -1080,7 +1209,7 @@ try:
             detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
             client_socket.sendall(b"OK: detect_aruco\n")
         elif command == "driving":
-            driving.driving(cap_front, marker_dict, param_markers, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+            driving.driving(cap_front, marker_dict, param_markers, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, target_distance=DEFAULT_ARUCO_DISTANCE)
             client_socket.sendall(b"OK: driving\n")
         elif command == "auto_driving":
             client_socket.sendall(b"OK: auto_driving\n")
