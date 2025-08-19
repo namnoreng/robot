@@ -18,26 +18,53 @@ robot_counter = 1
 PARKING_STATUS_FILE = "parking_status.json"
 
 def save_parking_status(parking_lot):
-    # json 저장 비활성화
-    # with open(PARKING_STATUS_FILE, "w", encoding="utf-8") as f:
-    #     json.dump(parking_lot, f, ensure_ascii=False, indent=2)
+    """주차 상태를 JSON 파일로 저장 - 현재 비활성화"""
+    # JSON 저장 기능 비활성화 (load를 통한 상태 업데이트만 사용)
+    # try:
+    #     status = export_parking_status()
+    #     with open(PARKING_STATUS_FILE, "w", encoding="utf-8") as f:
+    #         json.dump(status, f, ensure_ascii=False, indent=2)
+    #     print(f"[서버] 주차 상태 저장 완료: {len(status)}대 차량")
+    #     return True
+    # except Exception as e:
+    #     print(f"[서버] 주차 상태 저장 실패: {e}")
+    #     return False
     pass
 
 def load_parking_status():
-    # json 불러오기 비활성화
-    # if os.path.exists(PARKING_STATUS_FILE):
-    #     with open(PARKING_STATUS_FILE, "r", encoding="utf-8") as f:
-    #         return json.load(f)
-    return {}
+    """JSON 파일에서 주차 상태를 불러옴"""
+    try:
+        if os.path.exists(PARKING_STATUS_FILE):
+            with open(PARKING_STATUS_FILE, "r", encoding="utf-8") as f:
+                status = json.load(f)
+            print(f"[서버] 주차 상태 파일 로드 성공: {len(status)}대 차량")
+            return status
+        else:
+            print(f"[서버] 주차 상태 파일이 없습니다: {PARKING_STATUS_FILE}")
+            return {}
+    except json.JSONDecodeError as e:
+        print(f"[서버] 주차 상태 파일 파싱 오류: {e}")
+        return {}
+    except Exception as e:
+        print(f"[서버] 주차 상태 파일 로드 실패: {e}")
+        return {}
 
-# 서버 시작 시
+# 서버 시작 시 기존 주차 상태 복원
 parking_status = load_parking_status()
-# parking_status = {차량번호: {sector, side, subzone, direction}}
+print(f"[서버] 기존 주차 상태 로드: {len(parking_status)}대 차량")
+
+# 기존 주차 상태를 parking_lot에 복원
 for car_number, info in parking_status.items():
-    find_destination.park_car_at(
-        find_destination.parking_lot,
-        info["sector"], info["side"], info["subzone"], info["direction"], car_number
-    )
+    try:
+        find_destination.park_car_at(
+            find_destination.parking_lot,
+            info["sector"], info["side"], info["subzone"], info["direction"], car_number
+        )
+        print(f"[서버] 차량 {car_number} 복원: sector {info['sector']}, {info['side']}, subzone {info['subzone']}, {info['direction']}")
+    except KeyError as e:
+        print(f"[서버] 차량 {car_number} 복원 실패 - 잘못된 키: {e}")
+    except Exception as e:
+        print(f"[서버] 차량 {car_number} 복원 실패: {e}")
 
 def reset_all_parking():
     # 모든 공간을 비움
@@ -94,20 +121,30 @@ def command_mode():
             print(f"[서버] 오류: {e}")
 
 def export_parking_status():
+    """현재 주차 상태를 딕셔너리 형태로 추출"""
     status = {}
-    for sector_idx, sector in enumerate(find_destination.parking_lot):
-        for side in ["left", "right"]:
-            subzones = getattr(sector, side)
-            for subzone_idx, subzone in enumerate(subzones):
-                for direction in ["left", "right"]:
-                    space = getattr(subzone, direction)
-                    if space.car_number:
-                        status[space.car_number] = {
-                            "sector": sector_idx+1,
-                            "side": side,
-                            "subzone": subzone_idx+1,
-                            "direction": direction
-                        }
+    try:
+        for sector_idx, sector in enumerate(find_destination.parking_lot):
+            for side in ["left", "right"]:
+                subzones = getattr(sector, side)
+                for subzone_idx, subzone in enumerate(subzones):
+                    for direction in ["left", "right"]:
+                        space = getattr(subzone, direction)
+                        if space.car_number:
+                            status[space.car_number] = {
+                                "sector": sector_idx + 1,
+                                "side": side,
+                                "subzone": subzone_idx + 1,
+                                "direction": direction
+                            }
+        
+        print(f"[서버] 현재 주차 상태: {len(status)}대 차량")
+        for car_number, info in status.items():
+            print(f"  - {car_number}: sector {info['sector']}, {info['side']}, subzone {info['subzone']}, {info['direction']}")
+            
+    except Exception as e:
+        print(f"[서버] 주차 상태 추출 오류: {e}")
+    
     return status
 
 def start_server():

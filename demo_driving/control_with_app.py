@@ -25,14 +25,32 @@ def configure_camera_manual_settings(cap, camera_name="Camera", exposure=-7, wb_
     - saturation: 채도 (0~255)
     - gain: 게인 (0~255, 낮을수록 노이즈 적음)
     """
-    print(f"=== {camera_name} 수동 설정 적용 ===")
+    print(f"=== {camera_name} 통합 설정 적용 ===")
+    
+    # 고급 설정 (포커스, 버퍼 등)
+    try:
+        cap.set(cv.CAP_PROP_AUTOFOCUS, 0)  # 오토포커스 비활성화
+        cap.set(cv.CAP_PROP_FOCUS, 0)      # 포커스 고정
+        cap.set(cv.CAP_PROP_BUFFERSIZE, 1) # 최소 버퍼로 지연 최소화
+        
+        # 플랫폼별 고급 설정
+        if current_platform == "Linux":  # Jetson 환경
+            cap.set(cv.CAP_PROP_EXPOSURE, exposure)   # 플랫폼별 노출 시간
+            print(f"Jetson용 고급 설정 적용 (노출: {exposure})")
+        else:
+            # Windows 환경
+            cap.set(cv.CAP_PROP_EXPOSURE, exposure)   # 노출 시간
+            cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))  # MJPEG 코덱 사용
+            print(f"Windows용 고급 설정 적용 (노출: {exposure}, MJPEG)")
+            
+    except Exception as e:
+        print(f"{camera_name} 고급 설정 실패: {e}")
     
     # 자동 기능 비활성화
     cap.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25)  # 자동 노출 비활성화 (수동 모드)
     cap.set(cv.CAP_PROP_AUTO_WB, 0)           # 자동 화이트 밸런스 비활성화
     
     # 수동 값 설정
-    cap.set(cv.CAP_PROP_EXPOSURE, exposure)
     cap.set(cv.CAP_PROP_WB_TEMPERATURE, wb_temp)
     cap.set(cv.CAP_PROP_BRIGHTNESS, brightness)
     cap.set(cv.CAP_PROP_CONTRAST, contrast)
@@ -48,7 +66,7 @@ def configure_camera_manual_settings(cap, camera_name="Camera", exposure=-7, wb_
     print(f"대비: {cap.get(cv.CAP_PROP_CONTRAST)}")
     print(f"채도: {cap.get(cv.CAP_PROP_SATURATION)}")
     print(f"게인: {cap.get(cv.CAP_PROP_GAIN)}")
-    print("=" * (len(camera_name) + 16))
+    print("=" * (len(camera_name) + 20))
 
 # 플랫폼 구분
 current_platform = platform.system()
@@ -136,25 +154,7 @@ cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
 cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
 cap_front.set(cv.CAP_PROP_FPS, 30)
 
-# 전방 카메라 고급 설정
-try:
-    cap_front.set(cv.CAP_PROP_AUTOFOCUS, 0)  # 오토포커스 비활성화
-    cap_front.set(cv.CAP_PROP_FOCUS, 0)      # 포커스 고정
-    cap_front.set(cv.CAP_PROP_BUFFERSIZE, 1) # 최소 버퍼로 지연 최소화
-    
-    if current_platform == "Linux":  # Jetson 환경
-        cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 30fps에 맞춘 노출 시간
-        print("Jetson용 30fps 최적화 설정 적용")
-    else:
-        # Windows 환경
-        cap_front.set(cv.CAP_PROP_EXPOSURE, -6)   # 짧은 노출 시간
-        cap_front.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))  # MJPEG 코덱 사용
-        print("Windows용 카메라 설정 적용")
-        
-except Exception as e:
-    print(f"전방 카메라 고급 설정 실패: {e}")
-
-# 전방 카메라 수동 설정 적용 (플랫폼별 최적화)
+# 전방 카메라 통합 설정 적용 (고급 설정 + 수동 설정 포함)
 try:
     if current_platform == "Linux":  # Jetson 환경
         configure_camera_manual_settings(cap_front, "전방 카메라", 
@@ -166,7 +166,7 @@ try:
                                         exposure=-6, wb_temp=4000, brightness=120, 
                                         contrast=130, saturation=128, gain=20)
 except Exception as e:
-    print(f"전방 카메라 수동 설정 실패: {e}")
+    print(f"전방 카메라 통합 설정 실패: {e}")
 
 # 후방 카메라 설정 (있는 경우)
 if cap_back is not None and cap_back.isOpened():
@@ -189,22 +189,7 @@ if cap_back is not None and cap_back.isOpened():
     cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
     cap_back.set(cv.CAP_PROP_FPS, 30)
     
-    # 후방 카메라 고급 설정
-    try:
-        cap_back.set(cv.CAP_PROP_AUTOFOCUS, 0)
-        cap_back.set(cv.CAP_PROP_FOCUS, 0)
-        cap_back.set(cv.CAP_PROP_BUFFERSIZE, 1)
-        
-        if current_platform == "Linux":
-            cap_back.set(cv.CAP_PROP_EXPOSURE, -6)
-        else:
-            cap_back.set(cv.CAP_PROP_EXPOSURE, -6)
-            cap_back.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-            
-    except Exception as e:
-        print(f"후방 카메라 고급 설정 실패: {e}")
-    
-    # 후방 카메라 수동 설정 적용
+    # 후방 카메라 통합 설정 적용 (고급 설정 + 수동 설정 포함)
     try:
         if current_platform == "Linux":
             configure_camera_manual_settings(cap_back, "후방 카메라", 
@@ -215,7 +200,7 @@ if cap_back is not None and cap_back.isOpened():
                                             exposure=-6, wb_temp=4000, brightness=120, 
                                             contrast=130, saturation=128, gain=20)
     except Exception as e:
-        print(f"후방 카메라 수동 설정 실패: {e}")
+        print(f"후방 카메라 통합 설정 실패: {e}")
 else:
     cap_back = None
     print("후방 카메라 사용 불가")
@@ -365,6 +350,7 @@ try:
                             print(f"[Client] 시리얼 수신: '{recv}'")
                             if recv == "a":
                                 print("[Client] 차량 들어올리기 완료!")
+                                
                                 break
                             else:
                                 print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")

@@ -172,6 +172,20 @@ def handle_robot_message(msg, clients, app_clients, save_parking_status, export_
         except Exception as e:
             print(f"[서버] 위치 업데이트 메시지 파싱 오류: {e}")
 
+def send_parking_status_to_app(client_socket, export_parking_status):
+    """앱에 현재 주차 상태를 전송"""
+    try:
+        parking_status = export_parking_status()
+        for car_number, info in parking_status.items():
+            android_format = find_destination.convert_to_android_format_full(
+                info["sector"], info["side"], info["subzone"], info["direction"]
+            )
+            message = f"PARKED,{android_format},{car_number}\n"
+            client_socket.sendall(message.encode())
+            print(f"[서버] 기존 주차 상태 전송: {message.strip()}")
+    except Exception as e:
+        print(f"[서버] 주차 상태 전송 오류: {e}")
+
 def handle_client(client_socket, addr, clients, app_clients, robot_clients, save_parking_status, export_parking_status):
     """클라이언트 연결 및 메시지 처리"""
     print(f"[+] Connected by {addr}")
@@ -188,6 +202,9 @@ def handle_client(client_socket, addr, clients, app_clients, robot_clients, save
                 app_num += 1
             app_clients[app_num] = addr
             print(f"[서버] app #{app_num} 등록: {addr}")
+            
+            # 새로운 app에 현재 주차 상태 전송
+            send_parking_status_to_app(client_socket, export_parking_status)
         elif device_type == "robot":
             robot_num = 1
             while robot_num in robot_clients:
