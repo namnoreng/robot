@@ -36,7 +36,7 @@ def handle_server_command(msg, clients, app_clients, robot_clients, save_parking
             if 1 in app_clients:
                 app_addr = app_clients[1]
                 app_sock = clients[app_addr][0]
-                app_sock.sendall(f"PARKED,{android_format},{car_number}\n".encode())
+                app_sock.sendall(f"parked,{android_format},{car_number}\n".encode())
             save_parking_status(export_parking_status())
         else:
             print("[서버] 빈자리가 없습니다.")
@@ -83,7 +83,7 @@ def handle_app_message(msg, clients, app_clients, robot_clients, save_parking_st
             if 1 in app_clients:
                 app_addr = app_clients[1]
                 app_sock = clients[app_addr][0]
-                app_sock.sendall(f"PARKED,{android_format},{car_number}\n".encode())
+                app_sock.sendall(f"parked,{android_format},{car_number}\n".encode())
             save_parking_status(export_parking_status())
         else:
             print("[서버] 빈자리가 없습니다.")
@@ -180,7 +180,7 @@ def send_parking_status_to_app(client_socket, export_parking_status):
             android_format = find_destination.convert_to_android_format_full(
                 info["sector"], info["side"], info["subzone"], info["direction"]
             )
-            message = f"PARKED,{android_format},{car_number}\n"
+            message = f"parked,{android_format},{car_number}\n"
             client_socket.sendall(message.encode())
             print(f"[서버] 기존 주차 상태 전송: {message.strip()}")
     except Exception as e:
