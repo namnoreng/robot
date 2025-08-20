@@ -151,32 +151,48 @@ def receive_vehicle_distance_data():
 
 def calculate_aruco_target_distance(measured_gap_mm):
     """
-    측정된 간격을 바탕으로 ArUco 마커 인식 목표 거리를 계산
+    측정된 빗변 거리를 바탕으로 ArUco 마커 인식 목표 거리를 계산 (삼각법 사용)
     
     Parameters:
-    - measured_gap_mm: 측정된 차량과 로봇 간격 (mm)
+    - measured_gap_mm: 측정된 빗변 거리 (mm) - 센서에서 ArUco 마커까지의 직선 거리
     
     Returns:
-    - target_distance: ArUco 마커 인식용 목표 거리 (m 단위)
+    - target_distance: ArUco 마커 인식용 수평 목표 거리 (m 단위)
+    
+    계산 공식:
+    - 빗변: measured_gap_mm (센서 측정값)
+    - 높이: 80mm (8cm 고정)
+    - 수평거리 = √(빗변² - 높이²)  [피타고라스 정리]
     """
+    import math
+    
     if measured_gap_mm is None:
         # 간격 데이터가 없으면 기본값 사용
-        print("[거리 계산] 간격 데이터 없음, 기본 거리 0.38m 사용")
-        return 0.38
+        print("[거리 계산] 간격 데이터 없음, 기본 거리 사용")
+        return DEFAULT_ARUCO_DISTANCE
     
     # 기본 설정값
-    BASE_RECOGNITION_DISTANCE_MM = 150  # 기본 인식 거리 150mm
+    HEIGHT_MM = 80  # 높이 8cm = 80mm
     
-    # 실제 인식 거리 계산: 150mm - 현재 간격
-    target_distance_mm = BASE_RECOGNITION_DISTANCE_MM - measured_gap_mm 
-    target_distance_m = target_distance_mm / 1000.0  # mm를 m로 변환
+    # 삼각법으로 수평 거리 계산
+    if measured_gap_mm <= HEIGHT_MM:
+        # 빗변이 높이보다 작거나 같으면 물리적으로 불가능 - 최소값 사용
+        print(f"[거리 계산] 빗변({measured_gap_mm}mm)이 높이({HEIGHT_MM}mm)보다 작음 - 최소 거리 사용")
+        horizontal_distance_mm = 50  # 최소 5cm
+    else:
+        # 피타고라스 정리: 수평거리 = √(빗변² - 높이²)
+        horizontal_distance_mm = math.sqrt(measured_gap_mm**2 - HEIGHT_MM**2)
+    
+    # mm를 m로 변환
+    target_distance_m = horizontal_distance_mm / 1000.0
     
     # 안전 범위 제한 (0.1m ~ 0.6m)
-    target_distance_m = max(0.1, min(0.6, target_distance_m))
+    target_distance_m = max(0.11, min(0.6, target_distance_m))
     
-    print(f"[거리 계산] 측정 간격: {measured_gap_mm}mm")
-    print(f"[거리 계산] 계산된 목표 거리: {target_distance_mm}mm ({target_distance_m:.3f}m)")
-    print(f"[거리 계산] 계산식: 150 - {measured_gap_mm} = {target_distance_mm}mm")
+    print(f"[거리 계산] 빗변 거리: {measured_gap_mm}mm")
+    print(f"[거리 계산] 높이: {HEIGHT_MM}mm")
+    print(f"[거리 계산] 계산된 수평 거리: {horizontal_distance_mm:.1f}mm ({target_distance_m:.3f}m)")
+    print(f"[거리 계산] 계산식: √({measured_gap_mm}² - {HEIGHT_MM}²) = {horizontal_distance_mm:.1f}mm")
     
     return target_distance_m
 
