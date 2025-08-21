@@ -138,7 +138,6 @@ while True:
         print("기본 모드입니다.")
         while True:
             command = input("명령입력:")
-#ㅁㄴㅇㄹ ㅁㄴㅇㄻㄴㅇㄹㄴㅇㅁㄹ
 
             if command == "1":
                 if serial_server:
