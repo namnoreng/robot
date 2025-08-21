@@ -136,70 +136,21 @@ while True:
         continue
     elif mode == mode_state["default"]:
         print("기본 모드입니다.")
+        print("임의의 명령을 입력하면 시리얼로 전송됩니다. 'exit'로 종료.")
         while True:
             command = input("명령입력:")
 #ㅁㄴㅇㄹ ㅁㄴㅇㄻㄴㅇㄹㄴㅇㅁㄹ
 
-            if command == "1":
-                if serial_server:
-                    serial_server.write(f"1".encode())
-                    print("모드 1 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "2":
-                if serial_server:
-                    serial_server.write(f"2".encode())
-                    print("모드 2 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "3":
-                if serial_server:
-                    serial_server.write(f"3".encode())
-                    print("모드 3 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "4":
-                if serial_server:
-                    serial_server.write(f"4".encode())
-                    print("모드 4 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "5":
-                if serial_server:
-                    serial_server.write(f"5".encode())
-                    print("모드 5 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "6":
-                if serial_server:
-                    serial_server.write(f"6".encode())
-                    print("모드 6 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "7":
-                if serial_server:
-                    serial_server.write(f"7".encode())
-                    print("모드 7 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "8":
-                if serial_server:
-                    serial_server.write(f"8".encode())
-                    print("모드 8 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-            elif command == "9":
-                if serial_server:
-                    serial_server.write(f"9".encode())
-                    print("모드 9 전송")
-                else:
-                    print("시리얼 연결 없음 - 명령 무시")
-
-            elif command == "exit":
+            if command == "exit":
                 print("기본 모드 종료")
                 break
             else:
-                print("잘못된 명령입니다. 다시 입력하세요.")
+                # 사용자가 입력한 모든 명령을 그대로 시리얼로 전송
+                if serial_server:
+                    serial_server.write(command.encode())
+                    print(f"명령 '{command}' 전송 완료")
+                else:
+                    print("시리얼 연결 없음 - 명령 무시")
 
     # 모드에 따라 동작 변경
     if mode == mode_state["find_empty_place"]:
