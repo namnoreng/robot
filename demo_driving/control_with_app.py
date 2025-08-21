@@ -186,8 +186,8 @@ def calculate_aruco_target_distance(measured_gap_mm):
     # mm를 m로 변환
     target_distance_m = horizontal_distance_mm / 1000.0
     
-    # 안전 범위 제한 (0.1m ~ 0.6m)
-    target_distance_m = max(0.11, min(0.6, target_distance_m))
+    # 안전 범위 제한 (0.11m ~ 0.155m)
+    target_distance_m = max(0.11, min(0.155, target_distance_m))
     
     print(f"[거리 계산] 빗변 거리: {measured_gap_mm}mm")
     print(f"[거리 계산] 높이: {HEIGHT_MM}mm")
