@@ -136,20 +136,65 @@ while True:
         continue
     elif mode == mode_state["default"]:
         print("기본 모드입니다.")
-        print("임의의 명령을 입력하면 시리얼로 전송됩니다. 'exit'로 종료.")
+        print("카메라 창에서 ArUco 마커를 실시간으로 확인하면서 조종하세요.")
+        print("키보드 입력: 'q'로 종료, 다른 키는 시리얼로 전송됩니다.")
+        
+        # 카메라 화면과 ArUco 마커 인식을 실시간으로 표시
         while True:
-            command = input("명령입력:")
-
-            if command == "exit":
+            ret, frame = cap_front.read()
+            if not ret:
+                print("카메라에서 프레임을 읽을 수 없습니다.")
+                break
+            
+            # ArUco 마커 검출
+            gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+            corners, ids, _ = aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
+            
+            # 검출된 마커가 있으면 표시
+            if ids is not None:
+                # 마커 경계 그리기
+                aruco.drawDetectedMarkers(frame, corners, ids)
+                
+                # 각 마커의 거리 정보 표시
+                for i, marker_id in enumerate(ids.flatten()):
+                    # 마커 중심점 계산
+                    center_x = int(corners[i][0][:, 0].mean())
+                    center_y = int(corners[i][0][:, 1].mean())
+                    
+                    # 마커 ID와 위치 정보 텍스트 표시
+                    cv.putText(frame, f"ID: {marker_id}", 
+                              (center_x - 30, center_y - 10), 
+                              cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    cv.putText(frame, f"({center_x}, {center_y})", 
+                              (center_x - 40, center_y + 20), 
+                              cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+            
+            # 화면에 조종 안내 표시
+            cv.putText(frame, "Robot Control Mode - Press 'q' to exit", 
+                      (10, 30), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            cv.putText(frame, "Other keys will be sent to serial", 
+                      (10, 60), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+            
+            # 화면 표시
+            cv.imshow('Robot Control with ArUco Detection', frame)
+            
+            # 키보드 입력 처리 (1ms 대기)
+            key = cv.waitKey(1) & 0xFF
+            
+            if key == ord('q'):
                 print("기본 모드 종료")
                 break
-            else:
-                # 사용자가 입력한 모든 명령을 그대로 시리얼로 전송
+            elif key != 255:  # 키가 눌린 경우 (255는 아무 키도 안 눌림)
+                command = chr(key)
+                # 시리얼로 명령 전송
                 if serial_server:
                     serial_server.write(command.encode())
                     print(f"명령 '{command}' 전송 완료")
                 else:
                     print("시리얼 연결 없음 - 명령 무시")
+        
+        # 창 닫기
+        cv.destroyAllWindows()
 
     # 모드에 따라 동작 변경
     if mode == mode_state["find_empty_place"]:
