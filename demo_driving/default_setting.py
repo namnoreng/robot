@@ -169,12 +169,6 @@ while True:
                               (center_x - 40, center_y + 20), 
                               cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
             
-            # 화면에 조종 안내 표시
-            cv.putText(frame, "Robot Control Mode - Press 'q' to exit", 
-                      (10, 30), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-            cv.putText(frame, "Other keys will be sent to serial", 
-                      (10, 60), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
-            
             # 화면 표시
             cv.imshow('Robot Control with ArUco Detection', frame)
             
