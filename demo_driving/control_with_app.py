@@ -11,6 +11,11 @@ from cv2 import aruco
 import driving
 import detect_aruco
 
+# 코드 내에서 사용할 상수 및 변수 정의
+FRAME_WIDTH = 640
+FRAME_HEIGHT = 480
+FPS = 30
+
 # 기본 ArUco 인식 거리 설정 (미터 단위)
 DEFAULT_ARUCO_DISTANCE = 0.15
 
@@ -241,11 +246,11 @@ for i in range(10):
         print(f"전방 프레임 {i+1}/10 읽기 성공")
     time.sleep(0.1)
 
-# 이제 원하는 해상도로 설정
+# 이제 원하는 해상도로 설정 -> 30 fps 유지 테스트를 위해 해상도 낮춤
 print("전방 카메라 목표 해상도 설정...")
-cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-cap_front.set(cv.CAP_PROP_FPS, 30)
+cap_front.set(cv.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+cap_front.set(cv.CAP_PROP_FPS, FPS)
 
 # 전방 카메라 통합 설정 적용 (고급 설정 + 수동 설정 포함)
 try:
@@ -278,10 +283,10 @@ if cap_back is not None and cap_back.isOpened():
         time.sleep(0.1)
     
     # 목표 해상도 설정
-    cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-    cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-    cap_back.set(cv.CAP_PROP_FPS, 30)
-    
+    cap_back.set(cv.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
+    cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
+    cap_back.set(cv.CAP_PROP_FPS, FPS)
+
     # 후방 카메라 통합 설정 적용 (고급 설정 + 수동 설정 포함)
     try:
         if current_platform == "Linux":
