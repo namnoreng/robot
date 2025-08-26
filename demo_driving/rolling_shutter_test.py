@@ -6,6 +6,55 @@ from cv2 import aruco
 
 current_platform = platform.system()
 
+def simple_camera_test():
+    """순수 카메라 성능 테스트 - ArUco 없이"""
+    print("=== 순수 카메라 성능 테스트 ===")
+    print("ArUco 검출 없이 최대 FPS 테스트")
+    print("ESC 키로 종료")
+    
+    # 카메라 초기화
+    if current_platform == 'Windows':
+        cap = cv.VideoCapture(0, cv.CAP_DSHOW)
+    else:
+        cap = cv.VideoCapture(0)
+    
+    if not cap.isOpened():
+        print("❌ 카메라를 열 수 없습니다.")
+        return
+    
+    # 최소 설정
+    cap.set(cv.CAP_PROP_FRAME_WIDTH, 320)
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 240)
+    cap.set(cv.CAP_PROP_FPS, 60)
+    cap.set(cv.CAP_PROP_BUFFERSIZE, 1)
+    
+    frame_count = 0
+    start_time = time.time()
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        frame_count += 1
+        current_time = time.time()
+        elapsed = current_time - start_time
+        
+        if elapsed >= 1.0:
+            fps = frame_count / elapsed
+            print(f"🚀 실제 FPS: {fps:.1f}")
+            frame_count = 0
+            start_time = current_time
+        
+        # 최소한의 화면 표시
+        cv.imshow('Pure Camera Test', frame)
+        
+        if cv.waitKey(1) & 0xFF == 27:  # ESC
+            break
+    
+    cap.release()
+    cv.destroyAllWindows()
+
 def test_rolling_shutter_settings():
     """Rolling Shutter 효과를 테스트하는 함수 - 성능 최적화 버전"""
     
@@ -22,7 +71,7 @@ def test_rolling_shutter_settings():
     print("  'q': 종료")
     print("-" * 50)
     
-    # 카메라 초기화
+    # 카메라 초기화 - 최대 성능 우선
     if current_platform == 'Windows':
         cap = cv.VideoCapture(0, cv.CAP_DSHOW)
     elif current_platform == 'Linux':
@@ -34,23 +83,26 @@ def test_rolling_shutter_settings():
         print("❌ 카메라를 열 수 없습니다.")
         return
     
-    # ArUco 설정 - 성능 최적화
-    marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
-    param_markers = aruco.DetectorParameters_create()
+    print("📹 카메라 성능 최적화 설정 중...")
     
-    # ArUco 검출 성능 최적화
-    param_markers.adaptiveThreshWinSizeMin = 5
-    param_markers.adaptiveThreshWinSizeMax = 15  # 더 작은 윈도우
-    param_markers.adaptiveThreshWinSizeStep = 5
-    param_markers.minMarkerPerimeterRate = 0.05
-    param_markers.maxMarkerPerimeterRate = 2.0  # 더 작은 범위
-    param_markers.polygonalApproxAccuracyRate = 0.05
+    # 즉시 최적 설정 적용
+    cap.set(cv.CAP_PROP_FRAME_WIDTH, 320)
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 240)
+    cap.set(cv.CAP_PROP_FPS, 60)
+    cap.set(cv.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25)
+    cap.set(cv.CAP_PROP_EXPOSURE, -6)
     
-    # 기본 해상도 설정 - 성능 우선
-    cap.set(cv.CAP_PROP_FRAME_WIDTH, 640)
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
-    cap.set(cv.CAP_PROP_FPS, 30)
-    cap.set(cv.CAP_PROP_BUFFERSIZE, 1)  # 버퍼 최소화
+    # 실제 설정된 값 확인
+    actual_width = cap.get(cv.CAP_PROP_FRAME_WIDTH)
+    actual_height = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
+    actual_fps = cap.get(cv.CAP_PROP_FPS)
+    print(f"✅ 카메라 설정: {int(actual_width)}x{int(actual_height)}@{int(actual_fps)}fps")
+    
+    # ArUco 설정 - 성능 테스트를 위해 최소화
+    print("🔍 ArUco 설정 건너뛰기 (순수 카메라 성능 테스트)")
+    # marker_dict = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_5X5_250)
+    # param_markers = aruco.DetectorParameters_create()
     
     current_setting = "기본 설정"
     frame_count = 0
@@ -199,40 +251,42 @@ def test_rolling_shutter_settings():
             frame_count = 0
             fps_timer = current_time
         
-        # ArUco 마커 검출 - 프레임 스킵으로 성능 최적화
-        aruco_skip_counter += 1
-        if aruco_skip_counter % (ARUCO_SKIP_FRAMES + 1) == 0:
-            # 실제 ArUco 검출 수행
-            gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-            corners, ids, _ = aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
-            last_ids = ids
-            last_corners = corners
-        else:
-            # 이전 검출 결과 재사용
-            ids = last_ids
-            corners = last_corners
+        # ArUco 마커 검출 - 성능 테스트를 위해 완전히 비활성화
+        ids = None
+        corners = None
         
-        # 마커가 검출되면 표시 (간소화)
-        if ids is not None and corners is not None:
-            aruco.drawDetectedMarkers(frame, corners, ids)
-            # 첫 번째 마커만 ID 표시 (성능 향상)
-            if len(ids) > 0:
-                marker_id = ids[0][0]
-                center_x = int(corners[0][0][:, 0].mean())
-                center_y = int(corners[0][0][:, 1].mean())
-                cv.putText(frame, f"ID: {marker_id}", 
-                          (center_x - 30, center_y - 10), 
-                          cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        # 성능 테스트 모드: ArUco 검출 건너뛰기
+        # aruco_skip_counter += 1
+        # if aruco_skip_counter % (ARUCO_SKIP_FRAMES + 1) == 0:
+        #     # 실제 ArUco 검출 수행
+        #     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        #     corners, ids, _ = aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
+        #     last_ids = ids
+        #     last_corners = corners
+        # else:
+        #     # 이전 검출 결과 재사용
+        #     ids = last_ids
+        #     corners = last_corners
         
-        # 정보 표시 (간소화)
+        # 마커 표시도 비활성화 (성능 테스트)
+        # if ids is not None and corners is not None:
+        #     aruco.drawDetectedMarkers(frame, corners, ids)
+        #     # 첫 번째 마커만 ID 표시 (성능 향상)
+        #     if len(ids) > 0:
+        #         marker_id = ids[0][0]
+        #         center_x = int(corners[0][0][:, 0].mean())
+        #         center_y = int(corners[0][0][:, 1].mean())
+        #         cv.putText(frame, f"ID: {marker_id}", 
+        #                   (center_x - 30, center_y - 10), 
+        #                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        
+        # 정보 표시 (최소화 - 성능 우선)
         cv.putText(frame, f"FPS: {fps_display}", 
                   (10, 30), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        cv.putText(frame, f"{current_setting}", 
-                  (10, 60), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
-        # 사용법 표시 (간소화)
-        cv.putText(frame, "1,2,3,4,5:settings s:save q:quit", 
-                  (10, frame.shape[0] - 20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+        # 사용법 표시 생략 (성능 향상)
+        # cv.putText(frame, "1,2,3,4,5:settings s:save q:quit", 
+        #           (10, frame.shape[0] - 20), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
         
         # 화면 표시
         cv.imshow('Rolling Shutter Test', frame)
@@ -290,4 +344,16 @@ def print_camera_properties(cap):
     print("=" * 30)
 
 if __name__ == "__main__":
-    test_rolling_shutter_settings()
+    print("=== 카메라 테스트 프로그램 ===")
+    print("1. 순수 카메라 성능 테스트 (ArUco 없음)")
+    print("2. Rolling Shutter 테스트 (ArUco 포함)")
+    
+    choice = input("선택하세요 (1 또는 2): ").strip()
+    
+    if choice == "1":
+        simple_camera_test()
+    elif choice == "2":
+        test_rolling_shutter_settings()
+    else:
+        print("잘못된 선택입니다. 순수 카메라 테스트를 실행합니다.")
+        simple_camera_test()
