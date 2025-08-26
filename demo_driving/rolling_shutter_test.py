@@ -22,11 +22,130 @@ def simple_camera_test():
         print("❌ 카메라를 열 수 없습니다.")
         return
     
-    # 최소 설정
-    cap.set(cv.CAP_PROP_FRAME_WIDTH, 320)
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 240)
-    cap.set(cv.CAP_PROP_FPS, 60)
-    cap.set(cv.CAP_PROP_BUFFERSIZE, 1)
+    # Jetson Nano 최적화 설정
+    print("📝 Jetson Nano 최적화 설정 적용...")
+    
+    # 해상도별 테스트
+    resolutions = [
+        (160, 120, "QQVGA"),
+        (320, 240, "QVGA"), 
+        (640, 480, "VGA")
+    ]
+    
+    for width, height, name in resolutions:
+        print(f"\n🔍 {name} ({width}x{height}) 테스트:")
+        
+        cap.set(cv.CAP_PROP_FRAME_WIDTH, width)
+        cap.set(cv.CAP_PROP_FRAME_HEIGHT, height)
+        cap.set(cv.CAP_PROP_FPS, 30)
+        cap.set(cv.CAP_PROP_BUFFERSIZE, 1)
+        
+        # Jetson Nano 특화 설정
+        cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M','J','P','G'))
+        cap.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25)  # 수동 노출
+        cap.set(cv.CAP_PROP_EXPOSURE, -6)  # 빠른 노출
+        
+        time.sleep(0.5)  # 설정 적용 대기
+        
+        # 실제 설정값 확인
+        actual_w = cap.get(cv.CAP_PROP_FRAME_WIDTH)
+        actual_h = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
+        actual_fps = cap.get(cv.CAP_PROP_FPS)
+        print(f"   실제 설정: {actual_w:.0f}x{actual_h:.0f} @ {actual_fps:.0f}fps")
+        
+        # 5초간 FPS 측정
+        test_duration = 5
+        frame_count = 0
+        start_time = time.time()
+        fps_samples = []
+        
+        while time.time() - start_time < test_duration:
+            ret, frame = cap.read()
+            if not ret:
+                continue
+                
+            frame_count += 1
+            current_time = time.time()
+            
+            if frame_count % 10 == 0:  # 10프레임마다 FPS 계산
+                elapsed = current_time - start_time
+                if elapsed > 0:
+                    current_fps = frame_count / elapsed
+                    fps_samples.append(current_fps)
+                    print(f"   📊 현재 FPS: {current_fps:.1f}")
+        
+        if fps_samples:
+            avg_fps = sum(fps_samples) / len(fps_samples)
+            max_fps = max(fps_samples)
+            print(f"   ✅ {name} 결과: 평균 {avg_fps:.1f}fps, 최대 {max_fps:.1f}fps")
+        
+        print(f"   🔧 USB 대역폭 사용량: {width*height*3*avg_fps/1024/1024:.1f} MB/s")
+    
+    cap.release()
+    cv.destroyAllWindows()
+
+def jetson_hardware_info():
+    """Jetson Nano 하드웨어 정보 출력"""
+    print("\n=== Jetson Nano 하드웨어 분석 ===")
+    print("🔍 5fps 한계의 가능한 원인들:")
+    print("")
+    print("1. USB 대역폭 제한:")
+    print("   - USB 2.0: 최대 480Mbps (실제 ~300Mbps)")
+    print("   - 640x480x3x30fps = ~220Mbps 필요")
+    print("   - USB 오버헤드로 실제로는 더 많이 필요")
+    print("")
+    print("2. Jetson Nano CPU 제한:")
+    print("   - ARM Cortex-A57 4코어 @ 1.43GHz")
+    print("   - OpenCV 연산이 CPU 집약적")
+    print("   - 열 조절로 인한 클럭 다운")
+    print("")
+    print("3. 메모리 대역폭:")
+    print("   - 4GB LPDDR4 @ 1600MHz")
+    print("   - CPU/GPU 공유 메모리")
+    print("   - 이미지 복사 오버헤드")
+    print("")
+    print("4. 카메라 드라이버:")
+    print("   - V4L2 드라이버 최적화 필요")
+    print("   - UVC 카메라 호환성 문제")
+    print("")
+    print("💡 개선 방안:")
+    print("   - 더 낮은 해상도 사용 (320x240 이하)")
+    print("   - MJPEG 압축 활용")
+    print("   - GPU 가속 활용 (GStreamer)")
+    print("   - 전용 CSI 카메라 사용")
+
+def test_jetson_optimized():
+    """Jetson Nano 전용 최적화 테스트"""
+    print("=== Jetson Nano 전용 최적화 테스트 ===")
+    
+    # GStreamer 파이프라인 시도
+    gst_pipeline = (
+        "nvarguscamerasrc ! "
+        "video/x-raw(memory:NVMM), width=320, height=240, format=NV12, framerate=30/1 ! "
+        "nvvidconv ! video/x-raw, format=BGRx ! "
+        "videoconvert ! video/x-raw, format=BGR ! appsink"
+    )
+    
+    print("🔧 GStreamer 파이프라인 테스트...")
+    cap = cv.VideoCapture(gst_pipeline, cv.CAP_GSTREAMER)
+    
+    if cap.isOpened():
+        print("✅ GStreamer 성공! CSI 카메라 사용 중")
+        frame_count = 0
+        start_time = time.time()
+        
+        for i in range(150):  # 5초간 30fps 기대
+            ret, frame = cap.read()
+            if ret:
+                frame_count += 1
+        
+        elapsed = time.time() - start_time
+        fps = frame_count / elapsed
+        print(f"🚀 GStreamer FPS: {fps:.1f}")
+        cap.release()
+    else:
+        print("❌ GStreamer 실패 - USB 카메라로 폴백")
+        simple_camera_test()
     
     frame_count = 0
     start_time = time.time()
@@ -344,16 +463,22 @@ def print_camera_properties(cap):
     print("=" * 30)
 
 if __name__ == "__main__":
-    print("=== 카메라 테스트 프로그램 ===")
-    print("1. 순수 카메라 성능 테스트 (ArUco 없음)")
+    print("=== Jetson Nano 카메라 성능 분석 ===")
+    print("1. 순수 카메라 성능 테스트 (해상도별)")
     print("2. Rolling Shutter 테스트 (ArUco 포함)")
+    print("3. Jetson 하드웨어 한계 분석")
+    print("4. Jetson 전용 최적화 테스트 (GStreamer)")
     
-    choice = input("선택하세요 (1 또는 2): ").strip()
+    choice = input("선택하세요 (1-4): ").strip()
     
     if choice == "1":
         simple_camera_test()
     elif choice == "2":
         test_rolling_shutter_settings()
+    elif choice == "3":
+        jetson_hardware_info()
+    elif choice == "4":
+        test_jetson_optimized()
     else:
-        print("잘못된 선택입니다. 순수 카메라 테스트를 실행합니다.")
-        simple_camera_test()
+        print("잘못된 선택입니다. 하드웨어 분석을 출력합니다.")
+        jetson_hardware_info()
