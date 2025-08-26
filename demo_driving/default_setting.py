@@ -79,38 +79,38 @@ print("ArUco 설정 완료 (레거시 DetectorParameters_create() 사용)")
 
 # 카메라 초기화 (플랫폼별 백엔드 설정)
 if current_platform == 'Windows':
-    cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)  # Windows는 DirectShow 사용
+#    cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)  # Windows는 DirectShow 사용
     cap_back = cv.VideoCapture(1, cv.CAP_DSHOW)   # 후방 카메라도 DirectShow
 elif current_platform == 'Linux':
-    cap_front = cv.VideoCapture(0, cv.CAP_V4L2)   # Linux는 V4L2 사용
-    cap_back = cv.VideoCapture(1, cv.CAP_V4L2)    # 후방 카메라도 V4L2
+    # cap_front = cv.VideoCapture(0, cv.CAP_V4L2)   # Linux는 V4L2 사용 -> 잠시 카메라 하나만 사용
+    cap_back = cv.VideoCapture(0, cv.CAP_V4L2)    # 후방 카메라도 V4L2
 
 print("카메라 설정 중...")
 # 전방 카메라 설정
-cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-cap_front.set(cv.CAP_PROP_FPS, 30)
+# cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
+# cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+# cap_front.set(cv.CAP_PROP_FPS, 30)
 
 # 후방 카메라 설정
-cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 640)
+cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
 cap_back.set(cv.CAP_PROP_FPS, 30)
 
 # 카메라 연결 확인 (타임아웃 추가)
 print("카메라 연결 확인 중...")
 
-# 전방 카메라 확인
-front_timeout = 0
-while not cap_front.isOpened() and front_timeout < 10:  # 10초 타임아웃
-    print("waiting for front camera")
-    time.sleep(1)
-    front_timeout += 1
+# # 전방 카메라 확인
+# front_timeout = 0
+# while not cap_front.isOpened() and front_timeout < 10:  # 10초 타임아웃
+#     print("waiting for front camera")
+#     time.sleep(1)
+#     front_timeout += 1
 
-if cap_front.isOpened():
-    print("✅ front camera is opened")
-else:
-    print("❌ front camera 열기 실패 - 프로그램 종료")
-    exit(1)
+# if cap_front.isOpened():
+#     print("✅ front camera is opened")
+# else:
+#     print("❌ front camera 열기 실패 - 프로그램 종료")
+#     exit(1)
 
 # 후방 카메라 확인
 back_timeout = 0
@@ -141,7 +141,7 @@ while True:
         
         # 카메라 화면과 ArUco 마커 인식을 실시간으로 표시
         while True:
-            ret, frame = cap_front.read()
+            ret, frame = cap_back.read()
             if not ret:
                 print("카메라에서 프레임을 읽을 수 없습니다.")
                 break
