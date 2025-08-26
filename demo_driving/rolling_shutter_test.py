@@ -16,7 +16,7 @@ def simple_camera_test():
     if current_platform == 'Windows':
         cap = cv.VideoCapture(0, cv.CAP_DSHOW)
     else:
-        cap = cv.VideoCapture(0)
+        cap = cv.VideoCapture(0, cv.CAP_V4L2)
     
     if not cap.isOpened():
         print("❌ 카메라를 열 수 없습니다.")
