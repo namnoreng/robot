@@ -40,32 +40,52 @@ def initialize_camera():
     
     try:
         if current_platform == "Linux":
-            # Jetson Nano CSI 카메라 시도
+            # Jetson Nano CSI 카메라 시도 (더 안정적인 설정)
             print("[Camera] CSI 카메라 초기화 시도...")
+            
+            # 1차 시도: 낮은 해상도로 안정성 우선
             gst_pipeline = (
-                f"nvarguscamerasrc ! "
-                f"video/x-raw(memory:NVMM), width={CAMERA_WIDTH}, height={CAMERA_HEIGHT}, "
-                f"format=NV12, framerate={CAMERA_FPS}/1 ! "
-                f"nvvidconv ! "
-                f"video/x-raw, format=BGR ! "
-                f"appsink"
+                f"nvarguscamerasrc sensor-mode=4 ! "
+                f"video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! "
+                f"nvvidconv flip-method=0 ! "
+                f"video/x-raw, width={CAMERA_WIDTH}, height={CAMERA_HEIGHT}, format=BGR ! "
+                f"videoconvert ! "
+                f"appsink drop=1"
             )
             cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-            if cap.isOpened():
+            
+            if cap.isOpened() and cap.read()[0]:
                 camera_type = "CSI"
                 print("[Camera] CSI 카메라 초기화 성공")
             else:
+                if cap:
+                    cap.release()
                 cap = None
+                print("[Camera] CSI 카메라 초기화 실패, USB로 전환...")
         
         if cap is None:
-            # USB 카메라 백업
+            # USB 카메라 백업 (더 안정적인 설정)
             print("[Camera] USB 카메라 초기화 시도...")
             cap = cv2.VideoCapture(0)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
-            cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
-            camera_type = "USB"
-            print("[Camera] USB 카메라 초기화 성공")
+            
+            if cap.isOpened():
+                # 해상도를 먼저 설정
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+                cap.set(cv2.CAP_PROP_FPS, 15)  # USB 카메라는 낮은 FPS로 설정
+                
+                # 설정이 제대로 적용되었는지 확인
+                test_ret, test_frame = cap.read()
+                if test_ret and test_frame is not None:
+                    camera_type = "USB"
+                    print("[Camera] USB 카메라 초기화 성공")
+                else:
+                    cap.release()
+                    cap = None
+                    print("[Camera] USB 카메라 테스트 프레임 읽기 실패")
+            else:
+                cap = None
+                print("[Camera] USB 카메라 열기 실패")
             
     except Exception as e:
         print(f"[Camera] 카메라 초기화 실패: {e}")
