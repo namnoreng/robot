@@ -25,6 +25,20 @@ CAMERA_FPS = 30
 SAVE_FOLDER = "checkerboard_images"
 MIN_DETECTION_INTERVAL = 2.0  # 자동 저장 최소 간격 (초)
 
+def gstreamer_pipeline(capture_width=640, capture_height=480, 
+                      display_width=640, display_height=480, 
+                      framerate=30, flip_method=0):
+    """CSI 카메라용 GStreamer 파이프라인"""
+    return (
+        "nvarguscamerasrc ! "
+        "video/x-raw(memory:NVMM), "
+        f"width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
+        "nvvidconv flip-method=" + str(flip_method) + " ! "
+        f"video/x-raw, width={display_width}, height={display_height}, format=BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=BGR ! appsink max-buffers=1 drop=true"
+    )
+
 def create_save_folder():
     """저장 폴더 생성"""
     if not os.path.exists(SAVE_FOLDER):
@@ -33,38 +47,34 @@ def create_save_folder():
     return SAVE_FOLDER
 
 def initialize_camera():
-    """카메라 초기화 (CSI 우선, USB 백업)"""
+    """카메라 초기화 (CSI 우선, USB 백업) - csi_5x5_aruco.py 방식 적용"""
     current_platform = platform.system()
     cap = None
     camera_type = "Unknown"
     
     try:
         if current_platform == "Linux":
-            # Jetson Nano CSI 카메라 시도 (더 안정적인 설정)
+            # CSI 카메라 시도 (csi_5x5_aruco.py와 동일한 방식)
             print("[Camera] CSI 카메라 초기화 시도...")
+            pipeline = gstreamer_pipeline(CAMERA_WIDTH, CAMERA_HEIGHT, CAMERA_WIDTH, CAMERA_HEIGHT, CAMERA_FPS, 0)
+            cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
             
-            # 1차 시도: 낮은 해상도로 안정성 우선
-            gst_pipeline = (
-                f"nvarguscamerasrc sensor-mode=4 ! "
-                f"video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! "
-                f"nvvidconv flip-method=0 ! "
-                f"video/x-raw, width={CAMERA_WIDTH}, height={CAMERA_HEIGHT}, format=BGR ! "
-                f"videoconvert ! "
-                f"appsink drop=1"
-            )
-            cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-            
-            if cap.isOpened() and cap.read()[0]:
-                camera_type = "CSI"
-                print("[Camera] CSI 카메라 초기화 성공")
-            else:
-                if cap:
+            if cap.isOpened():
+                # 테스트 프레임 읽기
+                ret, test_frame = cap.read()
+                if ret and test_frame is not None:
+                    camera_type = "CSI"
+                    print("[Camera] CSI 카메라 초기화 성공")
+                else:
                     cap.release()
+                    cap = None
+                    print("[Camera] CSI 카메라 테스트 프레임 읽기 실패")
+            else:
                 cap = None
-                print("[Camera] CSI 카메라 초기화 실패, USB로 전환...")
+                print("[Camera] CSI 카메라 열기 실패")
         
         if cap is None:
-            # USB 카메라 백업 (더 안정적인 설정)
+            # USB 카메라 백업
             print("[Camera] USB 카메라 초기화 시도...")
             cap = cv2.VideoCapture(0)
             
