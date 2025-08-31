@@ -117,7 +117,7 @@ def initialize_camera():
 
 def detect_checkerboard(frame, checkerboard_size):
     """
-    체커보드 코너 검출
+    체커보드 코너 검출 (성능 최적화 버전)
     
     Args:
         frame: 입력 이미지
@@ -130,17 +130,20 @@ def detect_checkerboard(frame, checkerboard_size):
     """
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # 체커보드 코너 검출
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    # 성능 최적화: 빠른 검출 설정
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 0.1)  # 반복 횟수 감소
     
-    # 코너 검출
-    ret, corners = cv2.findChessboardCorners(gray, checkerboard_size, None)
+    # 코너 검출 (FAST_CHECK 플래그 추가로 속도 향상)
+    ret, corners = cv2.findChessboardCorners(
+        gray, checkerboard_size, 
+        flags=cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FAST_CHECK
+    )
     
     frame_with_corners = frame.copy()
     
     if ret:
-        # 서브픽셀 정확도로 코너 위치 개선
-        corners_refined = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+        # 성능 최적화: 서브픽셀 처리 간소화
+        corners_refined = cv2.cornerSubPix(gray, corners, (5, 5), (-1, -1), criteria)  # 윈도우 크기 감소
         
         # 코너 그리기
         cv2.drawChessboardCorners(frame_with_corners, checkerboard_size, corners_refined, ret)
@@ -163,6 +166,28 @@ def detect_checkerboard(frame, checkerboard_size):
                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
         
         return False, None, frame_with_corners
+
+def save_simple_image(frame, image_count, save_folder):
+    """
+    체커보드 이미지 간단 저장 (검출 없이 바로 저장)
+    
+    Args:
+        frame: 저장할 이미지
+        image_count: 이미지 번호
+        save_folder: 저장 폴더
+    
+    Returns:
+        filename: 저장된 파일명
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"checkerboard_{image_count:03d}_{timestamp}.jpg"
+    filepath = os.path.join(save_folder, filename)
+    
+    # 이미지 저장
+    cv2.imwrite(filepath, frame)
+    
+    print(f"[Save] 이미지 저장: {filename}")
+    return filename
 
 def save_image(frame, corners, image_count, save_folder):
     """
@@ -315,19 +340,14 @@ def main():
         return
     
     print("\n조작법:")
-    print("  SPACE: 수동으로 이미지 저장")
-    print("  'a': 자동 저장 모드 토글")
-    print("  'c': 간단한 캘리브레이션 수행")
-    print("  'r': 통계 리셋")
+    print("  SPACE: 체커보드 이미지 저장 (실시간 검출 없음)")
+    print("  'c': 저장된 이미지들로 캘리브레이션 수행")
     print("  's': 스크린샷 저장")
     print("  ESC/q: 종료")
     print("-" * 60)
     
     # 상태 변수
     image_count = 0
-    auto_save = False
-    last_save_time = 0
-    detection_count = 0
     total_frames = 0
     
     try:
@@ -339,30 +359,33 @@ def main():
             
             total_frames += 1
             
-            # 체커보드 검출
-            detected, corners, display_frame = detect_checkerboard(frame, CHECKERBOARD_SIZE)
+            # 단순히 원본 프레임만 표시 (검출 처리 없음)
+            display_frame = frame.copy()
             
-            if detected:
-                detection_count += 1
-                
-                # 자동 저장 모드
-                current_time = time.time()
-                if auto_save and (current_time - last_save_time) >= MIN_DETECTION_INTERVAL:
-                    save_image(frame, corners, image_count + 1, save_folder)
-                    image_count += 1
-                    last_save_time = current_time
+            # 간단한 가이드 표시
+            height, width = display_frame.shape[:2]
+            center_x, center_y = width // 2, height // 2
+            
+            # 십자선 표시 (체커보드 위치 가이드)
+            cv2.line(display_frame, (center_x - 50, center_y), (center_x + 50, center_y), (0, 255, 255), 1)
+            cv2.line(display_frame, (center_x, center_y - 50), (center_x, center_y + 50), (0, 255, 255), 1)
+            
+            # 안내 텍스트
+            cv2.putText(display_frame, f"Checkerboard Capture Mode", 
+                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+            cv2.putText(display_frame, f"Place checkerboard in view and press SPACE", 
+                       (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+            cv2.putText(display_frame, f"Pattern: {CHECKERBOARD_SIZE[0]}x{CHECKERBOARD_SIZE[1]} inner corners", 
+                       (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
             
             # 상태 정보 표시
-            detection_rate = (detection_count / total_frames * 100) if total_frames > 0 else 0
-            
-            # 상태 바 그리기
             status_y = display_frame.shape[0] - 80
             cv2.rectangle(display_frame, (0, status_y), (display_frame.shape[1], display_frame.shape[0]), (50, 50, 50), -1)
             
             status_text = [
-                f"Camera: {camera_type} | Images: {image_count} | Detection: {detection_rate:.1f}%",
-                f"Auto-save: {'ON' if auto_save else 'OFF'} | Pattern: {CHECKERBOARD_SIZE[0]}x{CHECKERBOARD_SIZE[1]}",
-                "SPACE:Save | A:Auto | C:Calibrate | R:Reset | S:Screenshot | ESC:Exit"
+                f"Camera: {camera_type} | Saved Images: {image_count} | Mode: Manual Capture",
+                f"Checkerboard: {CHECKERBOARD_SIZE[0]}x{CHECKERBOARD_SIZE[1]} | Square: {SQUARE_SIZE}mm",
+                "SPACE:Save Image | C:Calibrate | S:Screenshot | ESC:Exit"
             ]
             
             for i, text in enumerate(status_text):
@@ -377,16 +400,10 @@ def main():
             
             if key == 27 or key == ord('q'):  # ESC 또는 'q'
                 break
-            elif key == ord(' '):  # SPACE - 수동 저장
-                if detected:
-                    save_image(frame, corners, image_count + 1, save_folder)
-                    image_count += 1
-                    last_save_time = time.time()
-                else:
-                    print("[Warning] 체커보드가 검출되지 않아 저장하지 않습니다.")
-            elif key == ord('a'):  # 자동 저장 토글
-                auto_save = not auto_save
-                print(f"[Mode] 자동 저장: {'활성화' if auto_save else '비활성화'}")
+            elif key == ord(' '):  # SPACE - 체커보드 이미지 저장 (검출 없이 바로 저장)
+                save_simple_image(frame, image_count + 1, save_folder)
+                image_count += 1
+                print(f"[Save] 이미지 저장됨: {image_count}장")
             elif key == ord('c'):  # 캘리브레이션 수행
                 if image_count >= 3:
                     result = quick_calibration(save_folder, CHECKERBOARD_SIZE, SQUARE_SIZE)
@@ -396,10 +413,6 @@ def main():
                         print("[Error] 캘리브레이션 실패")
                 else:
                     print(f"[Warning] 캘리브레이션을 위해 최소 3장의 이미지가 필요합니다. (현재: {image_count}장)")
-            elif key == ord('r'):  # 통계 리셋
-                detection_count = 0
-                total_frames = 0
-                print("[Reset] 통계가 리셋되었습니다.")
             elif key == ord('s'):  # 스크린샷
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 screenshot_name = f"screenshot_{timestamp}.jpg"
@@ -416,8 +429,8 @@ def main():
         
         print(f"\n[Summary] 프로그램 종료")
         print(f"[Summary] 총 저장된 이미지: {image_count}장")
-        print(f"[Summary] 검출률: {(detection_count / total_frames * 100) if total_frames > 0 else 0:.1f}%")
         print(f"[Summary] 저장 위치: {save_folder}")
+        print(f"[Summary] 캘리브레이션을 위해 'c' 키를 눌러주세요.")
 
 if __name__ == "__main__":
     main()
