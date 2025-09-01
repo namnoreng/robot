@@ -8,10 +8,10 @@ import cv2
 import numpy as np
 import os
 
-def gstreamer_pipeline():
+def gstreamer_pipeline(camera_device="/dev/frontcam"):
     """CSI 카메라용 GStreamer 파이프라인"""
     return (
-        "nvarguscamerasrc ! "
+        f"nvarguscamerasrc sensor-id=0 ! "
         "video/x-raw(memory:NVMM), "
         "width=(int)640, height=(int)480, "
         "format=(string)NV12, framerate=(fraction)30/1 ! "
@@ -21,13 +21,40 @@ def gstreamer_pipeline():
         "video/x-raw, format=(string)BGR ! appsink"
     )
 
-def load_calibration_data():
+def v4l2_pipeline(camera_device="/dev/frontcam"):
+    """V4L2 카메라용 파이프라인 (심볼릭 링크 사용)"""
+    return (
+        f"v4l2src device={camera_device} ! "
+        "video/x-raw, width=640, height=480, framerate=30/1 ! "
+        "videoconvert ! "
+        "video/x-raw, format=BGR ! "
+        "appsink"
+    )
+
+def load_calibration_data(camera_type="front"):
     """캘리브레이션 데이터 로드"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    calibration_dir = os.path.join(script_dir, "calibration_result")
+    
+    # 카메라별 캘리브레이션 폴더 확인
+    if camera_type == "front":
+        calibration_dir = os.path.join(script_dir, "calibration_result_front")
+        fallback_dir = os.path.join(script_dir, "calibration_result")
+    elif camera_type == "back":
+        calibration_dir = os.path.join(script_dir, "calibration_result_back") 
+        fallback_dir = os.path.join(script_dir, "calibration_result")
+    else:
+        calibration_dir = os.path.join(script_dir, "calibration_result")
+        fallback_dir = None
     
     camera_matrix_path = os.path.join(calibration_dir, "camera_matrix.npy")
     dist_coeffs_path = os.path.join(calibration_dir, "dist_coeffs.npy")
+    
+    # 메인 경로에 없으면 fallback 시도
+    if not os.path.exists(camera_matrix_path) and fallback_dir:
+        print(f"⚠️  {camera_type} 카메라 전용 캘리브레이션이 없어 기본 캘리브레이션 사용")
+        calibration_dir = fallback_dir
+        camera_matrix_path = os.path.join(calibration_dir, "camera_matrix.npy")
+        dist_coeffs_path = os.path.join(calibration_dir, "dist_coeffs.npy")
     
     if not os.path.exists(camera_matrix_path) or not os.path.exists(dist_coeffs_path):
         print("❌ 캘리브레이션 파일을 찾을 수 없습니다!")
@@ -38,7 +65,8 @@ def load_calibration_data():
         camera_matrix = np.load(camera_matrix_path)
         dist_coeffs = np.load(dist_coeffs_path)
         
-        print("✅ 캘리브레이션 데이터 로드 성공!")
+        print(f"✅ {camera_type} 카메라 캘리브레이션 데이터 로드 성공!")
+        print(f"📁 경로: {calibration_dir}")
         print(f"📐 카메라 매트릭스:\n{camera_matrix}")
         print(f"🔧 왜곡 계수: {dist_coeffs}")
         
@@ -51,24 +79,63 @@ def load_calibration_data():
 def test_calibration_realtime():
     """실시간 캘리브레이션 테스트"""
     
-    # 캘리브레이션 데이터 로드
-    camera_matrix, dist_coeffs = load_calibration_data()
+    # 카메라 선택
+    print("📹 사용할 카메라를 선택하세요:")
+    print("1. 전면 카메라 (/dev/frontcam)")
+    print("2. 후면 카메라 (/dev/backcam)")
+    print("3. 기본 CSI 카메라 (nvarguscamerasrc)")
+    
+    while True:
+        choice = input("선택하세요 (1-3): ").strip()
+        if choice in ['1', '2', '3']:
+            break
+        print("❌ 잘못된 선택입니다. 1-3 중에서 선택하세요.")
+    
+    # 카메라 설정 및 캘리브레이션 데이터 로드
+    if choice == '1':
+        camera_device = "/dev/frontcam"
+        camera_name = "전면 카메라"
+        use_gstreamer = False
+        camera_matrix, dist_coeffs = load_calibration_data("front")
+    elif choice == '2':
+        camera_device = "/dev/backcam" 
+        camera_name = "후면 카메라"
+        use_gstreamer = False
+        camera_matrix, dist_coeffs = load_calibration_data("back")
+    else:
+        camera_device = None
+        camera_name = "CSI 카메라"
+        use_gstreamer = True
+        camera_matrix, dist_coeffs = load_calibration_data("csi")
+    
     if camera_matrix is None:
         return
     
     # 카메라 열기
-    print("🎥 카메라 연결 중...")
-    cap = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+    print(f"🎥 {camera_name} 연결 중...")
+    
+    if use_gstreamer:
+        cap = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+    else:
+        # V4L2 방식으로 시도
+        cap = cv2.VideoCapture(v4l2_pipeline(camera_device), cv2.CAP_GSTREAMER)
+        
+        # 실패하면 직접 디바이스 번호로 시도
+        if not cap.isOpened():
+            print(f"⚠️  GStreamer 실패, 직접 디바이스로 시도: {camera_device}")
+            cap = cv2.VideoCapture(camera_device)
     
     if not cap.isOpened():
-        print("❌ 카메라 열기 실패!")
+        print(f"❌ {camera_name} 열기 실패!")
         return
     
-    print("✅ 카메라 연결 성공!")
+    print(f"✅ {camera_name} 연결 성공!")
+    print(f"📱 사용 중인 카메라: {camera_name}")
     print("\n조작법:")
     print("  ESC/q: 종료")
     print("  s: 스크린샷 저장")
     print("  SPACE: 원본/보정 화면 전환")
+    print("  c: 카메라 정보 출력")
     print("-" * 50)
     
     show_comparison = True
@@ -93,27 +160,27 @@ def test_calibration_realtime():
             combined[:, w:] = undistorted_frame
             
             # 텍스트 추가
-            cv2.putText(combined, "Original", (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-            cv2.putText(combined, "Undistorted", (w + 10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(combined, f"Original ({camera_name})", (10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            cv2.putText(combined, f"Undistorted ({camera_name})", (w + 10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             
             # FPS 표시
             cv2.putText(combined, f"Frame: {frame_count}", (10, h - 20), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
             
-            cv2.imshow('Calibration Test - Original vs Undistorted', combined)
+            cv2.imshow(f'Calibration Test - {camera_name} (Original vs Undistorted)', combined)
             
         else:
             # 보정된 화면만 표시
             undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs)
             
-            cv2.putText(undistorted_frame, "Undistorted Only", (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(undistorted_frame, f"Undistorted ({camera_name})", (10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
             cv2.putText(undistorted_frame, f"Frame: {frame_count}", (10, 450), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
             
-            cv2.imshow('Calibration Test - Undistorted Only', undistorted_frame)
+            cv2.imshow(f'Calibration Test - {camera_name} (Undistorted Only)', undistorted_frame)
         
         # 키 입력 처리
         key = cv2.waitKey(1) & 0xFF
@@ -128,12 +195,19 @@ def test_calibration_realtime():
         elif key == ord('s'):  # 's' - 스크린샷 저장
             timestamp = cv2.getTickCount()
             if show_comparison:
-                filename = f"calibration_test_comparison_{timestamp}.jpg"
+                filename = f"calibration_test_{camera_name.replace(' ', '_')}_comparison_{timestamp}.jpg"
                 cv2.imwrite(filename, combined)
             else:
-                filename = f"calibration_test_undistorted_{timestamp}.jpg"
+                filename = f"calibration_test_{camera_name.replace(' ', '_')}_undistorted_{timestamp}.jpg"
                 cv2.imwrite(filename, undistorted_frame)
             print(f"📸 스크린샷 저장: {filename}")
+        elif key == ord('c'):  # 'c' - 카메라 정보
+            print(f"\n📱 카메라 정보:")
+            print(f"   이름: {camera_name}")
+            print(f"   디바이스: {camera_device if not use_gstreamer else 'CSI (GStreamer)'}")
+            print(f"   해상도: {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
+            print(f"   FPS: {cap.get(cv2.CAP_PROP_FPS)}")
+            print(f"   프레임 카운트: {frame_count}")
     
     # 정리
     cap.release()
@@ -143,8 +217,8 @@ def test_calibration_realtime():
 def test_calibration_with_saved_images():
     """저장된 이미지로 캘리브레이션 테스트"""
     
-    # 캘리브레이션 데이터 로드
-    camera_matrix, dist_coeffs = load_calibration_data()
+    # 캘리브레이션 데이터 로드 (기본 사용)
+    camera_matrix, dist_coeffs = load_calibration_data("default")
     if camera_matrix is None:
         return
     
