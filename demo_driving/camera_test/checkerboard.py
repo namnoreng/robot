@@ -22,7 +22,7 @@ CAMERA_HEIGHT = 480
 CAMERA_FPS = 30
 
 # 저장 설정
-SAVE_FOLDER = "checkerboard_images"
+SAVE_FOLDER = "checkerboard_images_back"
 MIN_DETECTION_INTERVAL = 2.0  # 자동 저장 최소 간격 (초)
 
 def create_save_folder():
@@ -40,10 +40,10 @@ def initialize_camera():
     
     try:
         if current_platform == "Linux":
-            # Jetson Nano CSI 카메라 시도
-            print("[Camera] CSI 카메라 초기화 시도...")
+            # Jetson Nano CSI 카메라 (backcam /dev/video1 사용)
+            print("[Camera] CSI 카메라 (backcam /dev/video1) 초기화 시도...")
             gst_pipeline = (
-                f"nvarguscamerasrc ! "
+                f"nvarguscamerasrc sensor-id=1 ! "
                 f"video/x-raw(memory:NVMM), width={CAMERA_WIDTH}, height={CAMERA_HEIGHT}, "
                 f"format=NV12, framerate={CAMERA_FPS}/1 ! "
                 f"nvvidconv ! "
@@ -52,16 +52,58 @@ def initialize_camera():
             )
             cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
             if cap.isOpened():
-                camera_type = "CSI"
-                print("[Camera] CSI 카메라 초기화 성공")
+                camera_type = "CSI (backcam)"
+                print("[Camera] CSI 카메라 (backcam) 초기화 성공")
             else:
                 cap = None
+                # /dev/video1 (backcam)로 직접 시도
+                print("[Camera] /dev/video1 (backcam)로 재시도...")
+                cap = cv2.VideoCapture(1)  # /dev/video1
+                if cap.isOpened():
+                    # 해상도와 FPS를 먼저 설정
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+                    cap.set(cv2.CAP_PROP_FPS, 15)  # 낮은 FPS로 설정
+                    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # 버퍼 크기 최소화
+                    
+                    # 설정 후 테스트 프레임 읽기
+                    import time
+                    for i in range(5):  # 몇 번 시도
+                        ret, test_frame = cap.read()
+                        if ret and test_frame is not None:
+                            camera_type = "backcam (/dev/video1)"
+                            print("[Camera] /dev/video1 (backcam) 초기화 성공")
+                            break
+                        time.sleep(0.1)
+                    else:
+                        # 테스트 프레임 읽기 실패
+                        cap.release()
+                        cap = None
+                        print("[Camera] /dev/video1 테스트 프레임 읽기 실패")
+                else:
+                    cap = None
         
         if cap is None:
-            # USB 카메라 백업
-            print("[Camera] USB 카메라 초기화 시도...")
+            # USB 카메라 (뒷카메라로 사용)
+            print("[Camera] USB 카메라 (뒷카메라) 초기화 시도...")
             cap = cv2.VideoCapture(0)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+            if cap.isOpened():
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+                cap.set(cv2.CAP_PROP_FPS, 15)
+                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                
+                # 테스트 프레임 읽기
+                ret, test_frame = cap.read()
+                if ret and test_frame is not None:
+                    camera_type = "USB (뒷카메라)"
+                    print("[Camera] USB 카메라 (뒷카메라) 초기화 성공")
+                else:
+                    cap.release()
+                    cap = None
+                    print("[Camera] USB 카메라 테스트 프레임 읽기 실패")
+            else:
+                cap = None
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
             cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
             camera_type = "USB"
