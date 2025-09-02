@@ -327,12 +327,21 @@ def run_5x5_aruco_detection():
                             corners, ids, aruco_dict, parameters, marker_id, 
                             camera_matrix, dist_coeffs, marker_size_m
                         )
+                        
+                        # 터미널에 거리 정보 출력
+                        if distance is not None:
+                            distance_cm = distance * 100
+                            x_angle, y_angle, z_angle = angles
+                            print(f"[ID{marker_id}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center[0]}, {center[1]})")
+                        
                         # 거리 정보 표시
                         draw_distance_info(frame, distance, angles, center, marker_id)
                     else:
                         # 캘리브레이션이 없으면 기본 정보만 표시
                         center = np.mean(corner[0], axis=0).astype(int)
                         marker_size = cv.contourArea(corner[0])
+                        
+                        print(f"[ID{marker_id}] No calibration - Pixel size: {marker_size:.0f}, Center: ({center[0]}, {center[1]})")
                         
                         cv.putText(frame, f"ID: {marker_id}", 
                                   (center[0] - 30, center[1] - 20), 
