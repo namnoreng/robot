@@ -40,10 +40,10 @@ def initialize_camera():
     
     try:
         if current_platform == "Linux":
-            # Jetson Nano CSI 카메라 시도
-            print("[Camera] CSI 카메라 초기화 시도...")
+            # Jetson Nano CSI 카메라 (backcam /dev/video1 사용)
+            print("[Camera] CSI 카메라 (backcam /dev/video1) 초기화 시도...")
             gst_pipeline = (
-                f"nvarguscamerasrc ! "
+                f"nvarguscamerasrc sensor-id=1 ! "
                 f"video/x-raw(memory:NVMM), width={CAMERA_WIDTH}, height={CAMERA_HEIGHT}, "
                 f"format=NV12, framerate={CAMERA_FPS}/1 ! "
                 f"nvvidconv ! "
@@ -52,10 +52,21 @@ def initialize_camera():
             )
             cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
             if cap.isOpened():
-                camera_type = "CSI"
-                print("[Camera] CSI 카메라 초기화 성공")
+                camera_type = "CSI (backcam)"
+                print("[Camera] CSI 카메라 (backcam) 초기화 성공")
             else:
                 cap = None
+                # /dev/video1 (backcam)로 직접 시도
+                print("[Camera] /dev/video1 (backcam)로 재시도...")
+                cap = cv2.VideoCapture(1)  # /dev/video1
+                if cap.isOpened():
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
+                    cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
+                    camera_type = "backcam (/dev/video1)"
+                    print("[Camera] /dev/video1 (backcam) 초기화 성공")
+                else:
+                    cap = None
         
         if cap is None:
             # USB 카메라 (뒷카메라로 사용)
