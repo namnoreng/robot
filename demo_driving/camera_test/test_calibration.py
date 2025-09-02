@@ -35,30 +35,24 @@ def load_calibration_data(camera_type="front"):
     """캘리브레이션 데이터 로드"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # 카메라별 캘리브레이션 폴더 확인
+    # 현재 테스트용 캘리브레이션 결과만 사용
+    calibration_dir = os.path.join(script_dir, "calibration_result")
+    
     if camera_type == "front":
-        calibration_dir = os.path.join(script_dir, "calibration_result_front")
-        fallback_dir = os.path.join(script_dir, "calibration_result")
+        camera_matrix_path = os.path.join(calibration_dir, "camera_front_matrix.npy")
+        dist_coeffs_path = os.path.join(calibration_dir, "dist_front_coeffs.npy")
     elif camera_type == "back":
-        calibration_dir = os.path.join(script_dir, "calibration_result_back") 
-        fallback_dir = os.path.join(script_dir, "calibration_result")
-    else:
-        calibration_dir = os.path.join(script_dir, "calibration_result")
-        fallback_dir = None
-    
-    camera_matrix_path = os.path.join(calibration_dir, "camera_matrix.npy")
-    dist_coeffs_path = os.path.join(calibration_dir, "dist_coeffs.npy")
-    
-    # 메인 경로에 없으면 fallback 시도
-    if not os.path.exists(camera_matrix_path) and fallback_dir:
-        print(f"⚠️  {camera_type} 카메라 전용 캘리브레이션이 없어 기본 캘리브레이션 사용")
-        calibration_dir = fallback_dir
-        camera_matrix_path = os.path.join(calibration_dir, "camera_matrix.npy")
-        dist_coeffs_path = os.path.join(calibration_dir, "dist_coeffs.npy")
+        camera_matrix_path = os.path.join(calibration_dir, "camera_back_matrix.npy")
+        dist_coeffs_path = os.path.join(calibration_dir, "dist_back_coeffs.npy")
+    else:  # csi 또는 default - 기본적으로 front 사용
+        camera_matrix_path = os.path.join(calibration_dir, "camera_front_matrix.npy")
+        dist_coeffs_path = os.path.join(calibration_dir, "dist_front_coeffs.npy")
     
     if not os.path.exists(camera_matrix_path) or not os.path.exists(dist_coeffs_path):
         print("❌ 캘리브레이션 파일을 찾을 수 없습니다!")
         print(f"   경로 확인: {calibration_dir}")
+        print(f"   카메라 매트릭스: {camera_matrix_path}")
+        print(f"   왜곡 계수: {dist_coeffs_path}")
         return None, None
     
     try:
@@ -217,23 +211,42 @@ def test_calibration_realtime():
 def test_calibration_with_saved_images():
     """저장된 이미지로 캘리브레이션 테스트"""
     
-    # 캘리브레이션 데이터 로드 (기본 사용)
-    camera_matrix, dist_coeffs = load_calibration_data("default")
+    print("📹 테스트할 이미지 카메라를 선택하세요:")
+    print("1. 전면 카메라 이미지")
+    print("2. 후면 카메라 이미지")
+    
+    while True:
+        choice = input("선택하세요 (1-2): ").strip()
+        if choice in ['1', '2']:
+            break
+        print("❌ 잘못된 선택입니다. 1-2 중에서 선택하세요.")
+    
+    # 선택에 따른 설정
+    if choice == '1':
+        camera_type = "front"
+        image_folder_name = "checkerboard_images"
+    else:
+        camera_type = "back"
+        image_folder_name = "checkerboard_images_back"
+    
+    # 캘리브레이션 데이터 로드
+    camera_matrix, dist_coeffs = load_calibration_data(camera_type)
     if camera_matrix is None:
         return
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    image_folder = os.path.join(script_dir, "checkerboard_images")
+    image_folder = os.path.join(script_dir, image_folder_name)
     
-    # 체커보드 이미지 몇 개 가져오기
+    # 체커보드 이미지 가져오기
     import glob
-    image_files = sorted(glob.glob(os.path.join(image_folder, "checkerboard_*.jpg")))[:5]
+    image_files = sorted(glob.glob(os.path.join(image_folder, "checkerboard_*.jpg")))[:10]
     
     if not image_files:
-        print("❌ 테스트할 이미지가 없습니다.")
+        print(f"❌ {image_folder}에서 테스트할 이미지가 없습니다.")
+        print(f"   checkerboard_*.jpg 파일을 확인하세요.")
         return
     
-    print(f"🖼️  {len(image_files)}개 이미지로 캘리브레이션 테스트")
+    print(f"🖼️  {len(image_files)}개 {camera_type} 카메라 이미지로 캘리브레이션 테스트")
     print("\n조작법:")
     print("  SPACE/→: 다음 이미지")
     print("  ←: 이전 이미지")
