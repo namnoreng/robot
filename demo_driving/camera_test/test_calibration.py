@@ -8,17 +8,18 @@ import cv2
 import numpy as np
 import os
 
-def gstreamer_pipeline(camera_device="/dev/frontcam"):
-    """CSI 카메라용 GStreamer 파이프라인"""
+def gstreamer_pipeline(capture_width=640, capture_height=480, 
+                      display_width=640, display_height=480, 
+                      framerate=30, flip_method=0, sensor_id=0):
+    """CSI 카메라용 GStreamer 파이프라인 (csi_5x5_aruco 방식)"""
     return (
-        f"nvarguscamerasrc sensor-id=0 ! "
+        f"nvarguscamerasrc sensor-id={sensor_id} ! "
         "video/x-raw(memory:NVMM), "
-        "width=(int)640, height=(int)480, "
-        "format=(string)NV12, framerate=(fraction)30/1 ! "
-        "nvvidconv flip-method=2 ! "
-        "video/x-raw, width=(int)640, height=(int)480, format=(string)BGRx ! "
+        f"width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
+        "nvvidconv flip-method=" + str(flip_method) + " ! "
+        f"video/x-raw, width={display_width}, height={display_height}, format=BGRx ! "
         "videoconvert ! "
-        "video/x-raw, format=(string)BGR ! appsink"
+        "video/x-raw, format=BGR ! appsink max-buffers=1 drop=true"
     )
 
 def v4l2_pipeline(camera_device="/dev/frontcam"):
@@ -77,39 +78,62 @@ def test_calibration_realtime():
     print("📹 사용할 카메라를 선택하세요:")
     print("1. 전면 카메라 (/dev/frontcam)")
     print("2. 후면 카메라 (/dev/backcam)")
-    print("3. 기본 CSI 카메라 (nvarguscamerasrc)")
+    print("3. CSI 전면 카메라 (sensor-id=0)")
+    print("4. CSI 후면 카메라 (sensor-id=1)")
     
     while True:
-        choice = input("선택하세요 (1-3): ").strip()
-        if choice in ['1', '2', '3']:
+        choice = input("선택하세요 (1-4): ").strip()
+        if choice in ['1', '2', '3', '4']:
             break
-        print("❌ 잘못된 선택입니다. 1-3 중에서 선택하세요.")
+        print("❌ 잘못된 선택입니다. 1-4 중에서 선택하세요.")
     
     # 카메라 설정 및 캘리브레이션 데이터 로드
     if choice == '1':
         camera_device = "/dev/frontcam"
-        camera_name = "전면 카메라"
-        use_gstreamer = False
+        camera_name = "전면 카메라 (V4L2)"
+        use_csi = False
+        sensor_id = 0
         camera_matrix, dist_coeffs = load_calibration_data("front")
     elif choice == '2':
         camera_device = "/dev/backcam" 
-        camera_name = "후면 카메라"
-        use_gstreamer = False
+        camera_name = "후면 카메라 (V4L2)"
+        use_csi = False
+        sensor_id = 1
         camera_matrix, dist_coeffs = load_calibration_data("back")
-    else:
+    elif choice == '3':
         camera_device = None
-        camera_name = "CSI 카메라"
-        use_gstreamer = True
-        camera_matrix, dist_coeffs = load_calibration_data("csi")
+        camera_name = "CSI 전면 카메라"
+        use_csi = True
+        sensor_id = 0
+        camera_matrix, dist_coeffs = load_calibration_data("front")
+    else:  # choice == '4'
+        camera_device = None
+        camera_name = "CSI 후면 카메라"
+        use_csi = True
+        sensor_id = 1
+        camera_matrix, dist_coeffs = load_calibration_data("back")
     
     if camera_matrix is None:
         return
     
-    # 카메라 열기
+    # 카메라 열기 (csi_5x5_aruco 방식)
     print(f"🎥 {camera_name} 연결 중...")
     
-    if use_gstreamer:
-        cap = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+    if use_csi:
+        # CSI 카메라 - GStreamer 파이프라인 사용
+        pipeline = gstreamer_pipeline(640, 480, 640, 480, 30, 0, sensor_id)
+        cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        
+        if not cap.isOpened():
+            print(f"❌ CSI sensor-id={sensor_id} 실패 - /dev/video{sensor_id}로 재시도")
+            cap = cv2.VideoCapture(sensor_id)  # /dev/video0 또는 /dev/video1
+            if not cap.isOpened():
+                print(f"❌ /dev/video{sensor_id} 실패 - 다른 비디오 디바이스로 폴백")
+                fallback_id = 1 - sensor_id  # 0->1, 1->0
+                cap = cv2.VideoCapture(fallback_id)
+                if not cap.isOpened():
+                    print("❌ 모든 카메라 연결 실패!")
+                    return
     else:
         # V4L2 방식으로 시도
         cap = cv2.VideoCapture(v4l2_pipeline(camera_device), cv2.CAP_GSTREAMER)
@@ -198,7 +222,10 @@ def test_calibration_realtime():
         elif key == ord('c'):  # 'c' - 카메라 정보
             print(f"\n📱 카메라 정보:")
             print(f"   이름: {camera_name}")
-            print(f"   디바이스: {camera_device if not use_gstreamer else 'CSI (GStreamer)'}")
+            if use_csi:
+                print(f"   디바이스: CSI sensor-id={sensor_id} (GStreamer)")
+            else:
+                print(f"   디바이스: {camera_device} (V4L2)")
             print(f"   해상도: {int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}")
             print(f"   FPS: {cap.get(cv2.CAP_PROP_FPS)}")
             print(f"   프레임 카운트: {frame_count}")
