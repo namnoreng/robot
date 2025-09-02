@@ -44,7 +44,7 @@ def calibrate_camera_from_images(image_folder, checkerboard_size, square_size):
     imgpoints = []  # 2D 포인트 (이미지 픽셀 좌표)
     
     # 이미지 파일들 찾기
-    image_pattern = os.path.join(image_folder, "checkerboard_*.jpg")
+    image_pattern = os.path.join(image_folder, "capture_*.jpg")
     image_files = glob.glob(image_pattern)
     
     if not image_files:
