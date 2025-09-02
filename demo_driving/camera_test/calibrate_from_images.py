@@ -202,7 +202,7 @@ def main():
     
     # 이미지 폴더 경로
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    image_folder = os.path.join(script_dir, "checkerboard_images")
+    image_folder = os.path.join(script_dir, "checkerboard_images_back")
     output_folder = os.path.join(script_dir, "calibration_result")
     
     if not os.path.exists(image_folder):
