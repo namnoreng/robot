@@ -77,101 +77,101 @@ def setup_5x5_aruco():
     
     return aruco_dict, parameters
 
-def calculate_marker_distance(corners, camera_matrix, dist_coeffs, marker_size_m=0.05):
+def calculate_marker_distance(corners, ids, aruco_dict, parameters, marker_id, camera_matrix, dist_coeffs, marker_length=0.05):
     """
-    ArUco 마커와의 거리 계산
+    driving.py 방식의 ArUco 마커 거리 계산
     
     Args:
-        corners: 마커 코너 좌표
+        corners: 마커 코너 좌표들
+        ids: 마커 ID들
+        aruco_dict: ArUco 딕셔너리
+        parameters: ArUco 파라미터
+        marker_id: 찾을 마커 ID
         camera_matrix: 카메라 매트릭스
         dist_coeffs: 왜곡 계수
-        marker_size_m: 실제 마커 크기 (미터 단위, 기본값: 5cm)
+        marker_length: 실제 마커 크기 (미터 단위)
     
     Returns:
-        distance: 거리 (미터), None if calculation fails
-        tvec: 변환 벡터
-        rvec: 회전 벡터
+        distance: 거리 (미터), None if not found
+        angles: (x_angle, y_angle, z_angle) 또는 (None, None, None)
+        center: (center_x, center_y) 또는 (None, None)
     """
-    if camera_matrix is None or dist_coeffs is None:
-        return None, None, None
+    if camera_matrix is None or dist_coeffs is None or ids is None:
+        return None, (None, None, None), (None, None)
     
     try:
-        # 3D 마커 좌표 (정사각형, Z=0 평면)
-        marker_3d_points = np.array([
-            [-marker_size_m/2, marker_size_m/2, 0],    # 좌상
-            [marker_size_m/2, marker_size_m/2, 0],     # 우상  
-            [marker_size_m/2, -marker_size_m/2, 0],    # 우하
-            [-marker_size_m/2, -marker_size_m/2, 0]    # 좌하
-        ], dtype=np.float32)
+        for i in range(len(ids)):
+            if ids[i][0] == marker_id:
+                # 포즈 추정 (OpenCV 버전 호환성 처리)
+                cv_version = cv.__version__.split(".")
+                if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+                    # OpenCV 3.2.x 이하
+                    rvecs, tvecs = cv.aruco.estimatePoseSingleMarkers(
+                        np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                    )
+                else:
+                    # OpenCV 3.3.x 이상 또는 4.x
+                    rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(
+                        np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                    )
+                
+                distance = np.linalg.norm(tvecs[0][0])
+
+                # 회전 행렬 및 각도
+                rotation_matrix, _ = cv.Rodrigues(rvecs[0][0])
+                sy = np.sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
+                singular = sy < 1e-6
+
+                if not singular:
+                    x_angle = np.arctan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
+                    y_angle = np.arctan2(-rotation_matrix[2, 0], sy)
+                    z_angle = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
+                else:
+                    x_angle = np.arctan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
+                    y_angle = np.arctan2(-rotation_matrix[2, 0], sy)
+                    z_angle = 0
+
+                x_angle = np.degrees(x_angle)
+                y_angle = np.degrees(y_angle)
+                z_angle = np.degrees(z_angle)
+
+                # 중심점 좌표 계산
+                c = corners[i].reshape(4, 2)
+                center_x = int(np.mean(c[:, 0]))
+                center_y = int(np.mean(c[:, 1]))
+
+                return distance, (x_angle, y_angle, z_angle), (center_x, center_y)
         
-        # 2D 이미지 좌표
-        marker_2d_points = corners[0].astype(np.float32)
+        # 해당 마커를 찾지 못함
+        return None, (None, None, None), (None, None)
         
-        # PnP 문제 해결하여 포즈 추정
-        success, rvec, tvec = cv.solvePnP(
-            marker_3d_points, marker_2d_points, 
-            camera_matrix, dist_coeffs
-        )
-        
-        if success:
-            # 거리는 변환 벡터의 크기 (유클리드 거리)
-            distance = np.linalg.norm(tvec)
-            return distance, tvec, rvec
-        else:
-            return None, None, None
-            
     except Exception as e:
         print(f"거리 계산 오류: {e}")
-        return None, None, None
+        return None, (None, None, None), (None, None)
 
-def draw_distance_info(frame, corners, distance, tvec, rvec, marker_id, camera_matrix, dist_coeffs):
-    """마커에 거리 정보와 좌표축 그리기"""
-    if distance is None:
+def draw_distance_info(frame, distance, angles, center, marker_id):
+    """간단하게 거리 정보 표시 (driving.py 방식)"""
+    if distance is None or center[0] is None:
         return
     
     try:
-        # 마커 중심점 계산
-        center = np.mean(corners[0], axis=0).astype(int)
+        center_x, center_y = center
         
         # 거리 텍스트 표시
         distance_cm = distance * 100  # 미터를 센티미터로 변환
         cv.putText(frame, f"ID{marker_id}: {distance_cm:.1f}cm", 
-                  (center[0] - 60, center[1] - 30), 
+                  (center_x - 60, center_y - 30), 
                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        # X, Y, Z 좌표 표시 (tvec는 카메라 좌표계)
-        x, y, z = tvec.flatten() * 100  # 센티미터로 변환
-        cv.putText(frame, f"X:{x:.1f} Y:{y:.1f} Z:{z:.1f}", 
-                  (center[0] - 80, center[1] + 20), 
-                  cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
-        
-        # 3D 좌표축 그리기
-        if camera_matrix is not None and dist_coeffs is not None:
-            axis_length = 0.02  # 2cm 길이의 축
-            axis_3d = np.array([
-                [0, 0, 0],           # 원점
-                [axis_length, 0, 0], # X축 (빨강)
-                [0, axis_length, 0], # Y축 (초록)  
-                [0, 0, -axis_length] # Z축 (파랑, 카메라 쪽으로)
-            ], dtype=np.float32)
-            
-            # 3D 축을 2D로 투영
-            axis_2d, _ = cv.projectPoints(axis_3d, rvec, tvec, camera_matrix, dist_coeffs)
-            axis_2d = axis_2d.astype(int)
-            
-            # 좌표축 그리기
-            origin = tuple(axis_2d[0].ravel())
-            x_axis = tuple(axis_2d[1].ravel())
-            y_axis = tuple(axis_2d[2].ravel()) 
-            z_axis = tuple(axis_2d[3].ravel())
-            
-            # X축 (빨강), Y축 (초록), Z축 (파랑)
-            cv.line(frame, origin, x_axis, (0, 0, 255), 3)  # X축
-            cv.line(frame, origin, y_axis, (0, 255, 0), 3)  # Y축  
-            cv.line(frame, origin, z_axis, (255, 0, 0), 3)  # Z축
+        # 각도 정보 표시 (옵션)
+        x_angle, y_angle, z_angle = angles
+        if x_angle is not None:
+            cv.putText(frame, f"X:{x_angle:.1f} Y:{y_angle:.1f} Z:{z_angle:.1f}", 
+                      (center_x - 80, center_y + 20), 
+                      cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
             
     except Exception as e:
-        print(f"거리 정보 그리기 오류: {e}")
+        print(f"거리 정보 표시 오류: {e}")
 
 def run_5x5_aruco_detection():
     """5x5 ArUco 마커 검출 및 거리 측정 실행"""
@@ -294,7 +294,7 @@ def run_5x5_aruco_detection():
                 # 검출된 마커 그리기
                 cv.aruco.drawDetectedMarkers(frame, corners, ids)
                 
-                # 각 마커 정보 표시
+                # 각 마커 정보 표시 및 거리 계산
                 for i, corner in enumerate(corners):
                     marker_id = ids[i][0]
                     
@@ -303,14 +303,14 @@ def run_5x5_aruco_detection():
                         marker_stats[marker_id] = 0
                     marker_stats[marker_id] += 1
                     
-                    # 거리 계산 (캘리브레이션이 있는 경우)
+                    # 거리 계산 (driving.py 방식)
                     if use_undistort and camera_matrix is not None:
-                        distance, tvec, rvec = calculate_marker_distance(
-                            [corner], camera_matrix, dist_coeffs, marker_size_m=marker_size_m
+                        distance, angles, center = calculate_marker_distance(
+                            corners, ids, aruco_dict, parameters, marker_id, 
+                            camera_matrix, dist_coeffs, marker_size_m
                         )
-                        # 거리 정보와 좌표축 그리기
-                        draw_distance_info(frame, [corner], distance, tvec, rvec, 
-                                         marker_id, camera_matrix, dist_coeffs)
+                        # 거리 정보 표시
+                        draw_distance_info(frame, distance, angles, center, marker_id)
                     else:
                         # 캘리브레이션이 없으면 기본 정보만 표시
                         center = np.mean(corner[0], axis=0).astype(int)
