@@ -10,7 +10,7 @@ import os
 
 def gstreamer_pipeline(capture_width=640, capture_height=480, 
                       display_width=640, display_height=480, 
-                      framerate=30, flip_method=0, sensor_id=0):
+                      framerate=30, flip_method=0, sensor_id=1):
     """CSI 카메라용 GStreamer 파이프라인 (csi_5x5_aruco 방식)"""
     return (
         f"nvarguscamerasrc sensor-id={sensor_id} ! "
@@ -120,20 +120,35 @@ def test_calibration_realtime():
     print(f"🎥 {camera_name} 연결 중...")
     
     if use_csi:
-        # CSI 카메라 - GStreamer 파이프라인 사용
-        pipeline = gstreamer_pipeline(640, 480, 640, 480, 30, 0, sensor_id)
-        cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-        
-        if not cap.isOpened():
-            print(f"❌ CSI sensor-id={sensor_id} 실패 - /dev/video{sensor_id}로 재시도")
-            cap = cv2.VideoCapture(sensor_id)  # /dev/video0 또는 /dev/video1
+        # CSI 카메라 - csi_5x5_aruco와 동일한 방식
+        if sensor_id == 1:
+            # 후면 카메라 (backcam 우선)
+            pipeline = gstreamer_pipeline(640, 480, 640, 480, 30, 0, sensor_id)
+            cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+            
             if not cap.isOpened():
-                print(f"❌ /dev/video{sensor_id} 실패 - 다른 비디오 디바이스로 폴백")
-                fallback_id = 1 - sensor_id  # 0->1, 1->0
-                cap = cv2.VideoCapture(fallback_id)
+                print("❌ CSI backcam 실패 - /dev/video1로 재시도")
+                cap = cv2.VideoCapture(1)  # /dev/video1 (backcam)
                 if not cap.isOpened():
-                    print("❌ 모든 카메라 연결 실패!")
-                    return
+                    print("❌ backcam 실패 - frontcam으로 폴백")
+                    cap = cv2.VideoCapture(0)  # /dev/video0 (frontcam)
+                    if not cap.isOpened():
+                        print("❌ 모든 카메라 실패")
+                        return
+        else:
+            # 전면 카메라 (frontcam 우선)
+            pipeline = gstreamer_pipeline(640, 480, 640, 480, 30, 0, sensor_id)
+            cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+            
+            if not cap.isOpened():
+                print("❌ CSI frontcam 실패 - /dev/video0로 재시도")
+                cap = cv2.VideoCapture(0)  # /dev/video0 (frontcam)
+                if not cap.isOpened():
+                    print("❌ frontcam 실패 - backcam으로 폴백")
+                    cap = cv2.VideoCapture(1)  # /dev/video1 (backcam)
+                    if not cap.isOpened():
+                        print("❌ 모든 카메라 실패")
+                        return
     else:
         # V4L2 방식으로 시도
         cap = cv2.VideoCapture(v4l2_pipeline(camera_device), cv2.CAP_GSTREAMER)
