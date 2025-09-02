@@ -1,8 +1,7 @@
 """
-체커보드 촬영 및 카메라 캘리브레이션용 이미지 수집 프로그램
-- 체커보드를 인식하여 자동/수동으로 캘리브레이션 이미지 저장
-- CSI 카메라와 USB 카메라 지원
-- 실시간 체커보드 코너 검출 및 시각화
+카메라 수동 캡처 프로그램 (초간소화 버전)
+- 카메라 화면만 표시하고 수동으로 이미지 저장
+- CSI 카메라 지원
 """
 
 import cv2
@@ -211,116 +210,11 @@ def save_image(frame, corners, image_count, save_folder):
     print(f"[Save] 이미지 저장: {filename} (코너: {len(corners)}개)")
     return filename
 
-def calculate_reprojection_error(objpoints, imgpoints, camera_matrix, dist_coeffs, rvecs, tvecs):
-    """재투영 오차 계산"""
-    total_error = 0
-    for i in range(len(objpoints)):
-        imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], camera_matrix, dist_coeffs)
-        error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
-        total_error += error
-    return total_error / len(objpoints)
-
-def quick_calibration(save_folder, checkerboard_size, square_size):
-    """
-    저장된 이미지들로 간단한 캘리브레이션 수행
-    
-    Args:
-        save_folder: 이미지가 저장된 폴더
-        checkerboard_size: 체커보드 크기
-        square_size: 체커보드 한 칸의 실제 크기 (mm)
-    """
-    print(f"\n[Calibration] 간단한 캘리브레이션 수행...")
-    
-    # 3D 객체 포인트 준비
-    objp = np.zeros((checkerboard_size[0] * checkerboard_size[1], 3), np.float32)
-    objp[:, :2] = np.mgrid[0:checkerboard_size[0], 0:checkerboard_size[1]].T.reshape(-1, 2)
-    objp *= square_size
-    
-    objpoints = []  # 3D 포인트
-    imgpoints = []  # 2D 포인트_
-    
-    # 저장된 이미지 파일 찾기
-    image_files = [f for f in os.listdir(save_folder) if f.startswith('checkerboard_') and f.endswith('.jpg')]
-    
-    if len(image_files) < 3:
-        print(f"[Calibration] 캘리브레이션을 위한 이미지가 부족합니다. (현재: {len(image_files)}개, 최소: 3개)")
-        return None
-    
-    print(f"[Calibration] {len(image_files)}개 이미지로 캘리브레이션 시작...")
-    
-    valid_images = 0
-    for filename in image_files:
-        filepath = os.path.join(save_folder, filename)
-        img = cv2.imread(filepath)
-        if img is None:
-            continue
-            
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        ret, corners = cv2.findChessboardCorners(gray, checkerboard_size, None)
-        
-        if ret:
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-            corners_refined = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-            
-            objpoints.append(objp)
-            imgpoints.append(corners_refined)
-            valid_images += 1
-    
-    if valid_images < 3:
-        print(f"[Calibration] 유효한 이미지가 부족합니다. (유효: {valid_images}개)")
-        return None
-    
-    # 카메라 캘리브레이션 실행
-    img_shape = gray.shape[::-1]
-    ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
-        objpoints, imgpoints, img_shape, None, None
-    )
-    
-    if ret:
-        # 재투영 오차 계산
-        reprojection_error = calculate_reprojection_error(objpoints, imgpoints, camera_matrix, dist_coeffs, rvecs, tvecs)
-        
-        print(f"[Calibration] 캘리브레이션 완료!")
-        print(f"[Calibration] 사용된 이미지: {valid_images}개")
-        print(f"[Calibration] 재투영 오차: {reprojection_error:.3f} 픽셀")
-        print(f"[Calibration] 카메라 매트릭스:")
-        print(camera_matrix)
-        print(f"[Calibration] 왜곡 계수:")
-        print(dist_coeffs.flatten())
-        
-        # 결과 저장
-        calib_folder = os.path.join(save_folder, "calibration_result")
-        if not os.path.exists(calib_folder):
-            os.makedirs(calib_folder)
-            
-        np.save(os.path.join(calib_folder, "camera_matrix.npy"), camera_matrix)
-        np.save(os.path.join(calib_folder, "dist_coeffs.npy"), dist_coeffs)
-        
-        # 결과 텍스트 파일 저장
-        with open(os.path.join(calib_folder, "calibration_info.txt"), 'w') as f:
-            f.write(f"Camera Calibration Results\n")
-            f.write(f"========================\n")
-            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Images used: {valid_images}\n")
-            f.write(f"Reprojection error: {reprojection_error:.6f} pixels\n")
-            f.write(f"Checkerboard size: {checkerboard_size[0]}x{checkerboard_size[1]}\n")
-            f.write(f"Square size: {square_size} mm\n\n")
-            f.write(f"Camera Matrix:\n{camera_matrix}\n\n")
-            f.write(f"Distortion Coefficients:\n{dist_coeffs.flatten()}\n")
-        
-        print(f"[Calibration] 결과 저장됨: {calib_folder}")
-        return camera_matrix, dist_coeffs
-    else:
-        print(f"[Calibration] 캘리브레이션 실패")
-        return None
-
 def main():
-    """메인 함수"""
+    """메인 함수 - 수동 캡처 전용"""
     print("=" * 60)
-    print("체커보드 촬영 및 카메라 캘리브레이션 프로그램")
+    print("카메라 수동 캡처 프로그램")
     print("=" * 60)
-    print(f"체커보드 설정: {CHECKERBOARD_SIZE[0]}x{CHECKERBOARD_SIZE[1]} 내부 코너")
-    print(f"체커보드 한 칸 크기: {SQUARE_SIZE}mm")
     print(f"카메라 해상도: {CAMERA_WIDTH}x{CAMERA_HEIGHT}")
     print()
     
@@ -334,20 +228,12 @@ def main():
         return
     
     print("\n조작법:")
-    print("  SPACE: 수동으로 이미지 저장")
-    print("  'a': 자동 저장 모드 토글")
-    print("  'c': 간단한 캘리브레이션 수행")
-    print("  'r': 통계 리셋")
-    print("  's': 스크린샷 저장")
+    print("  SPACE: 이미지 저장")
     print("  ESC/q: 종료")
     print("-" * 60)
     
     # 상태 변수
     image_count = 0
-    auto_save = False
-    last_save_time = 0
-    detection_count = 0
-    total_frames = 0
     
     try:
         while True:
@@ -356,74 +242,30 @@ def main():
                 print("[Error] 프레임 읽기 실패")
                 break
             
-            total_frames += 1
+            # 단순히 프레임 표시만
+            display_frame = frame.copy()
             
-            # 체커보드 검출
-            detected, corners, display_frame = detect_checkerboard(frame, CHECKERBOARD_SIZE)
-            
-            if detected:
-                detection_count += 1
-                
-                # 자동 저장 모드
-                current_time = time.time()
-                if auto_save and (current_time - last_save_time) >= MIN_DETECTION_INTERVAL:
-                    save_image(frame, corners, image_count + 1, save_folder)
-                    image_count += 1
-                    last_save_time = current_time
-            
-            # 상태 정보 표시
-            detection_rate = (detection_count / total_frames * 100) if total_frames > 0 else 0
-            
-            # 상태 바 그리기
-            status_y = display_frame.shape[0] - 80
-            cv2.rectangle(display_frame, (0, status_y), (display_frame.shape[1], display_frame.shape[0]), (50, 50, 50), -1)
-            
-            status_text = [
-                f"Camera: {camera_type} | Images: {image_count} | Detection: {detection_rate:.1f}%",
-                f"Auto-save: {'ON' if auto_save else 'OFF'} | Pattern: {CHECKERBOARD_SIZE[0]}x{CHECKERBOARD_SIZE[1]}",
-                "SPACE:Save | A:Auto | C:Calibrate | R:Reset | S:Screenshot | ESC:Exit"
-            ]
-            
-            for i, text in enumerate(status_text):
-                cv2.putText(display_frame, text, (10, status_y + 20 + i*15), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            # 간단한 상태 표시
+            cv2.putText(display_frame, f"Images: {image_count} | Camera: {camera_type}", 
+                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+            cv2.putText(display_frame, "SPACE: Save | ESC: Exit", 
+                       (10, display_frame.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
             
             # 화면 표시
-            cv2.imshow('Checkerboard Capture', display_frame)
+            cv2.imshow('Manual Camera Capture', display_frame)
             
             # 키 입력 처리
             key = cv2.waitKey(1) & 0xFF
             
             if key == 27 or key == ord('q'):  # ESC 또는 'q'
                 break
-            elif key == ord(' '):  # SPACE - 수동 저장
-                if detected:
-                    save_image(frame, corners, image_count + 1, save_folder)
-                    image_count += 1
-                    last_save_time = time.time()
-                else:
-                    print("[Warning] 체커보드가 검출되지 않아 저장하지 않습니다.")
-            elif key == ord('a'):  # 자동 저장 토글
-                auto_save = not auto_save
-                print(f"[Mode] 자동 저장: {'활성화' if auto_save else '비활성화'}")
-            elif key == ord('c'):  # 캘리브레이션 수행
-                if image_count >= 3:
-                    result = quick_calibration(save_folder, CHECKERBOARD_SIZE, SQUARE_SIZE)
-                    if result is not None:
-                        print("[Success] 캘리브레이션 완료!")
-                    else:
-                        print("[Error] 캘리브레이션 실패")
-                else:
-                    print(f"[Warning] 캘리브레이션을 위해 최소 3장의 이미지가 필요합니다. (현재: {image_count}장)")
-            elif key == ord('r'):  # 통계 리셋
-                detection_count = 0
-                total_frames = 0
-                print("[Reset] 통계가 리셋되었습니다.")
-            elif key == ord('s'):  # 스크린샷
+            elif key == ord(' '):  # SPACE - 이미지 저장
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                screenshot_name = f"screenshot_{timestamp}.jpg"
-                cv2.imwrite(os.path.join(save_folder, screenshot_name), display_frame)
-                print(f"[Screenshot] 저장됨: {screenshot_name}")
+                filename = f"capture_{image_count+1:03d}_{timestamp}.jpg"
+                filepath = os.path.join(save_folder, filename)
+                cv2.imwrite(filepath, frame)
+                image_count += 1
+                print(f"[Save] 이미지 저장: {filename}")
     
     except KeyboardInterrupt:
         print("\n[Exit] 키보드 인터럽트로 종료합니다.")
@@ -435,7 +277,6 @@ def main():
         
         print(f"\n[Summary] 프로그램 종료")
         print(f"[Summary] 총 저장된 이미지: {image_count}장")
-        print(f"[Summary] 검출률: {(detection_count / total_frames * 100) if total_frames > 0 else 0:.1f}%")
         print(f"[Summary] 저장 위치: {save_folder}")
 
 if __name__ == "__main__":
