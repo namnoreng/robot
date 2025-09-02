@@ -25,6 +25,20 @@ CAMERA_FPS = 30
 SAVE_FOLDER = "checkerboard_images_back"
 MIN_DETECTION_INTERVAL = 2.0  # 자동 저장 최소 간격 (초)
 
+def gstreamer_pipeline(capture_width=640, capture_height=480, 
+                      display_width=640, display_height=480, 
+                      framerate=30, flip_method=0):
+    """CSI 카메라용 GStreamer 파이프라인 (csi_5x5_aruco.py 방식)"""
+    return (
+        f"nvarguscamerasrc sensor-id=1 ! "
+        "video/x-raw(memory:NVMM), "
+        f"width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
+        "nvvidconv flip-method=" + str(flip_method) + " ! "
+        f"video/x-raw, width={display_width}, height={display_height}, format=BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=BGR ! appsink max-buffers=1 drop=true"
+    )
+
 def create_save_folder():
     """저장 폴더 생성"""
     if not os.path.exists(SAVE_FOLDER):
@@ -40,17 +54,11 @@ def initialize_camera():
     
     try:
         if current_platform == "Linux":
-            # Jetson Nano CSI 카메라 (backcam /dev/video1 사용)
-            print("[Camera] CSI 카메라 (backcam /dev/video1) 초기화 시도...")
-            gst_pipeline = (
-                f"nvarguscamerasrc sensor-id=1 ! "
-                f"video/x-raw(memory:NVMM), width={CAMERA_WIDTH}, height={CAMERA_HEIGHT}, "
-                f"format=NV12, framerate={CAMERA_FPS}/1 ! "
-                f"nvvidconv ! "
-                f"video/x-raw, format=BGR ! "
-                f"appsink"
-            )
-            cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+            # CSI 카메라 초기화 (csi_5x5_aruco.py 방식)
+            print("[Camera] CSI 카메라 (backcam) 초기화 시도...")
+            pipeline = gstreamer_pipeline(CAMERA_WIDTH, CAMERA_HEIGHT, CAMERA_WIDTH, CAMERA_HEIGHT, 30, 0)
+            cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+            
             if cap.isOpened():
                 camera_type = "CSI (backcam)"
                 print("[Camera] CSI 카메라 (backcam) 초기화 성공")
@@ -60,7 +68,6 @@ def initialize_camera():
                 print("[Camera] /dev/video1 (backcam)로 재시도...")
                 cap = cv2.VideoCapture(1)  # /dev/video1
                 if cap.isOpened():
-                    # 해상도와 FPS를 먼저 설정
                     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
                     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
                     cap.set(cv2.CAP_PROP_FPS, 15)  # 낮은 FPS로 설정
