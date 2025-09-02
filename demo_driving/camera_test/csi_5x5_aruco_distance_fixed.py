@@ -150,25 +150,38 @@ def calculate_marker_distance(corners, ids, aruco_dict, parameters, marker_id, c
         return None, (None, None, None), (None, None)
 
 def draw_distance_info(frame, distance, angles, center, marker_id):
-    """간단하게 거리 정보 표시 (driving.py 방식)"""
+    """간단하게 거리 정보 표시 (driving.py 방식, 개선된 버전)"""
     if distance is None or center[0] is None:
         return
     
     try:
         center_x, center_y = center
         
-        # 거리 텍스트 표시
+        # 거리 텍스트 표시 (더 큰 폰트)
         distance_cm = distance * 100  # 미터를 센티미터로 변환
         cv.putText(frame, f"ID{marker_id}: {distance_cm:.1f}cm", 
                   (center_x - 60, center_y - 30), 
-                  cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                  cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         
-        # 각도 정보 표시 (옵션)
+        # Z축 각도만 표시 (가장 중요한 각도)
         x_angle, y_angle, z_angle = angles
-        if x_angle is not None:
-            cv.putText(frame, f"X:{x_angle:.1f} Y:{y_angle:.1f} Z:{z_angle:.1f}", 
-                      (center_x - 80, center_y + 20), 
-                      cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+        if z_angle is not None:
+            # Z축 각도 (회전 각도) - driving.py에서 주로 사용하는 값
+            cv.putText(frame, f"Angle: {z_angle:.1f}°", 
+                      (center_x - 50, center_y + 20), 
+                      cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+            
+            # 각도 상태 표시 (5도 허용오차 기준)
+            if abs(z_angle) <= 5:
+                status = "ALIGNED"
+                status_color = (0, 255, 0)  # 녹색
+            else:
+                status = "TILTED"
+                status_color = (0, 165, 255)  # 주황색
+            
+            cv.putText(frame, status, 
+                      (center_x - 40, center_y + 45), 
+                      cv.FONT_HERSHEY_SIMPLEX, 0.5, status_color, 2)
             
     except Exception as e:
         print(f"거리 정보 표시 오류: {e}")
@@ -195,28 +208,33 @@ def run_5x5_aruco_detection():
     
     print(f"✅ 선택: {desc} ({cap_w}x{cap_h})")
     
-    # ArUco 마커 실제 크기 설정
-    print("\n📏 ArUco 마커 실제 크기를 입력하세요:")
-    print("1. 5cm (기본값)")
-    print("2. 3cm")
-    print("3. 직접 입력")
+    # ArUco 마커 실제 크기 설정 (정밀 측정 권장)
+    print("\n📏 ArUco 마커 실제 크기를 정확히 입력하세요:")
+    print("   ⚠️  정확한 측정이 거리와 각도 정밀도에 중요합니다!")
+    print("1. 5.0cm (기본값)")
+    print("2. 3.0cm")
+    print("3. 2.9cm (driving.py 보정값)")
+    print("4. 직접 입력 (mm 단위로 정밀 측정)")
     
-    marker_choice = input("선택 (1-3): ").strip()
+    marker_choice = input("선택 (1-4): ").strip()
     
     if marker_choice == "2":
-        marker_size_m = 0.03  # 3cm
-        print("✅ 마커 크기: 3cm")
+        marker_size_m = 0.030  # 3.0cm
+        print("✅ 마커 크기: 3.0cm")
     elif marker_choice == "3":
+        marker_size_m = 0.029  # 2.9cm (driving.py의 보정값)
+        print("✅ 마커 크기: 2.9cm (driving.py 보정값)")
+    elif marker_choice == "4":
         try:
-            size_cm = float(input("마커 크기 (cm): "))
-            marker_size_m = size_cm / 100.0  # cm를 m로 변환
-            print(f"✅ 마커 크기: {size_cm}cm")
+            size_mm = float(input("마커 크기를 mm 단위로 입력하세요 (예: 50.5): "))
+            marker_size_m = size_mm / 1000.0  # mm를 m로 변환
+            print(f"✅ 마커 크기: {size_mm}mm ({marker_size_m:.3f}m)")
         except ValueError:
-            marker_size_m = 0.05  # 기본값
-            print("⚠️ 잘못된 입력, 기본값 5cm 사용")
+            marker_size_m = 0.050  # 기본값
+            print("⚠️ 잘못된 입력, 기본값 5.0cm 사용")
     else:
-        marker_size_m = 0.05  # 5cm (기본값)
-        print("✅ 마커 크기: 5cm")
+        marker_size_m = 0.050  # 5.0cm (기본값)
+        print("✅ 마커 크기: 5.0cm")
     
     # CSI 카메라 초기화 (backcam 우선)
     pipeline = gstreamer_pipeline(cap_w, cap_h, disp_w, disp_h, 30, 0, "/dev/backcam")
