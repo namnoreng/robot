@@ -10,10 +10,10 @@ from cv2 import aruco
 
 def gstreamer_pipeline(capture_width=640, capture_height=480, 
                       display_width=640, display_height=480, 
-                      framerate=30, flip_method=0):
+                      framerate=30, flip_method=0, device="/dev/backcam"):
     """CSI 카메라용 GStreamer 파이프라인"""
     return (
-        "nvarguscamerasrc ! "
+        f"nvarguscamerasrc sensor-id=1 ! "
         "video/x-raw(memory:NVMM), "
         f"width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
         "nvvidconv flip-method=" + str(flip_method) + " ! "
@@ -76,16 +76,19 @@ def run_5x5_aruco_detection():
     
     print(f"✅ 선택: {desc} ({cap_w}x{cap_h})")
     
-    # CSI 카메라 초기화
-    pipeline = gstreamer_pipeline(cap_w, cap_h, disp_w, disp_h, 30, 0)
+    # CSI 카메라 초기화 (backcam 우선)
+    pipeline = gstreamer_pipeline(cap_w, cap_h, disp_w, disp_h, 30, 0, "/dev/backcam")
     cap = cv.VideoCapture(pipeline, cv.CAP_GSTREAMER)
     
     if not cap.isOpened():
-        print("❌ CSI 카메라 실패 - USB 카메라로 폴백")
-        cap = cv.VideoCapture(0)
+        print("❌ CSI backcam 실패 - /dev/video1로 재시도")
+        cap = cv.VideoCapture(1)  # /dev/video1 (backcam)
         if not cap.isOpened():
-            print("❌ 모든 카메라 실패")
-            return False
+            print("❌ backcam 실패 - frontcam으로 폴백")
+            cap = cv.VideoCapture(0)  # /dev/video0 (frontcam)
+            if not cap.isOpened():
+                print("❌ 모든 카메라 실패")
+                return False
     
     print("✅ 카메라 초기화 성공")
     
