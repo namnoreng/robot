@@ -18,8 +18,8 @@ import platform
 current_platform = platform.system()
 
 # 마커 크기 설정 - camera_test에서 검증된 최적화 값
-# 실제 측정값과 비교하여 조정: 0.05 * (실제거리/측정거리) ≈ 0.029
-marker_length = 0.029  # camera_test에서 검증된 보정 값 (m)
+# 실제 측정값과 비교하여 조정: 0.05 * (실제거리/측정거리) ≈ 0.05
+marker_length = 0.05  # camera_test에서 검증된 보정 값 (m)
 
 # OpenCV 버전 및 플랫폼에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv2.__version__.split(".")
@@ -311,7 +311,7 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
         print("[Driving] 시리얼 통신이 연결되지 않았습니다.")
         return False
 
-    FRAME_CENTER_X = 640  # 1280x720 해상도 기준 중앙
+    FRAME_CENTER_X = 320  # 640x480 해상도 기준 중앙
     CENTER_TOLERANCE = 30  # 중앙 허용 오차 (픽셀) - 정밀하게
     TARGET_DISTANCE = 0.3  # 후방 마커 목표 거리 (30cm)
     
