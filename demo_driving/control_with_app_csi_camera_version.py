@@ -28,73 +28,42 @@ DEFAULT_ARUCO_DISTANCE = 0.15
 
 def gstreamer_pipeline(capture_width=640, capture_height=480, 
                       display_width=640, display_height=480, 
-                      framerate=30, flip_method=0, device="/dev/frontcam"):
-    """CSI 카메라용 GStreamer 파이프라인"""
+                      framerate=30, flip_method=0, sensor_id=0):
+    """CSI 카메라용 GStreamer 파이프라인 최적화"""
     return (
-        f"nvarguscamerasrc sensor-id=1 ! "
+        f"nvarguscamerasrc sensor-id={sensor_id} ! "
         "video/x-raw(memory:NVMM), "
         f"width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
-        "nvvidconv flip-method=" + str(flip_method) + " ! "
+        f"nvvidconv flip-method={flip_method} ! "
         f"video/x-raw, width={display_width}, height={display_height}, format=BGRx ! "
         "videoconvert ! "
-        "video/x-raw, format=BGR ! appsink max-buffers=1 drop=true"
+        "video/x-raw, format=BGR ! appsink drop=true max-buffers=2"
     )
 
-def configure_camera_manual_settings(cap, camera_name="Camera", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0):
+def configure_csi_camera_settings(cap, camera_name="CSI Camera"):
     """
-    카메라의 자동 기능을 비활성화하고 수동 설정을 적용하는 함수
-    
-    Parameters:
-    - cap: cv2.VideoCapture 객체
-    - camera_name: 카메라 이름 (로그용)
-    - exposure: 노출 값 (-13 ~ -1, 낮을수록 어두움)
-    - wb_temp: 화이트 밸런스 온도 (2800~6500K)
-    - brightness: 밝기 (0~255)
-    - contrast: 대비 (0~255)
-    - saturation: 채도 (0~255)
-    - gain: 게인 (0~255, 낮을수록 노이즈 적음)
+    CSI 카메라용 간단한 설정 함수
+    CSI 카메라는 GStreamer 파이프라인에서 대부분 설정되므로 최소한만 설정
     """
-    print(f"=== {camera_name} 통합 설정 적용 ===")
+    print(f"=== {camera_name} CSI 설정 확인 ===")
     
-    # 고급 설정 (포커스, 버퍼 등)
     try:
-        cap.set(cv.CAP_PROP_AUTOFOCUS, 0)  # 오토포커스 비활성화
-        cap.set(cv.CAP_PROP_FOCUS, 0)      # 포커스 고정
-        cap.set(cv.CAP_PROP_BUFFERSIZE, 1) # 최소 버퍼로 지연 최소화
+        # 버퍼 설정만 적용 (나머지는 GStreamer에서 처리)
+        cap.set(cv.CAP_PROP_BUFFERSIZE, 1)  # 최소 버퍼로 지연 최소화
+        print("✅ CSI 카메라 버퍼 설정 완료")
         
-        # 플랫폼별 고급 설정
-        if current_platform == "Linux":  # Jetson 환경
-            cap.set(cv.CAP_PROP_EXPOSURE, exposure)   # 플랫폼별 노출 시간
-            print(f"Jetson용 고급 설정 적용 (노출: {exposure})")
-        else:
-            # Windows 환경
-            cap.set(cv.CAP_PROP_EXPOSURE, exposure)   # 노출 시간
-            cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))  # MJPEG 코덱 사용
-            print(f"Windows용 고급 설정 적용 (노출: {exposure}, MJPEG)")
-            
+        # 현재 설정 확인만 수행 (설정 변경 시도하지 않음)
+        width = cap.get(cv.CAP_PROP_FRAME_WIDTH)
+        height = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
+        fps = cap.get(cv.CAP_PROP_FPS)
+        
+        print(f"현재 해상도: {width}x{height}")
+        print(f"현재 FPS: {fps}")
+        print("✅ CSI 카메라는 GStreamer 파이프라인 설정 사용")
+        
     except Exception as e:
-        print(f"{camera_name} 고급 설정 실패: {e}")
+        print(f"⚠️ {camera_name} 설정 확인 중 오류: {e}")
     
-    # 자동 기능 비활성화
-    cap.set(cv.CAP_PROP_AUTO_EXPOSURE, 0.25)  # 자동 노출 비활성화 (수동 모드)
-    cap.set(cv.CAP_PROP_AUTO_WB, 0)           # 자동 화이트 밸런스 비활성화
-    
-    # 수동 값 설정
-    cap.set(cv.CAP_PROP_WB_TEMPERATURE, wb_temp)
-    cap.set(cv.CAP_PROP_BRIGHTNESS, brightness)
-    cap.set(cv.CAP_PROP_CONTRAST, contrast)
-    cap.set(cv.CAP_PROP_SATURATION, saturation)
-    cap.set(cv.CAP_PROP_GAIN, gain)
-    
-    # 설정 확인
-    print(f"자동노출: {cap.get(cv.CAP_PROP_AUTO_EXPOSURE)} (0.25=수동)")
-    print(f"노출값: {cap.get(cv.CAP_PROP_EXPOSURE)}")
-    print(f"자동WB: {cap.get(cv.CAP_PROP_AUTO_WB)} (0=비활성화)")
-    print(f"WB온도: {cap.get(cv.CAP_PROP_WB_TEMPERATURE)}K")
-    print(f"밝기: {cap.get(cv.CAP_PROP_BRIGHTNESS)}")
-    print(f"대비: {cap.get(cv.CAP_PROP_CONTRAST)}")
-    print(f"채도: {cap.get(cv.CAP_PROP_SATURATION)}")
-    print(f"게인: {cap.get(cv.CAP_PROP_GAIN)}")
     print("=" * (len(camera_name) + 20))
 
 # 플랫폼 구분
@@ -234,21 +203,44 @@ else:
     # Jetson에서 CSI 카메라 사용 (GStreamer 파이프라인)
     print("Jetson 환경 - CSI 카메라 전용")
     
-    # CSI 전면 카메라 (frontcam) 초기화
-    pipeline_front = gstreamer_pipeline(FRAME_WIDTH, FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT, FPS, 0, "/dev/frontcam")
+    # CSI 전면 카메라 (sensor-id=0) 초기화
+    pipeline_front = gstreamer_pipeline(
+        capture_width=FRAME_WIDTH, 
+        capture_height=FRAME_HEIGHT, 
+        display_width=FRAME_WIDTH, 
+        display_height=FRAME_HEIGHT, 
+        framerate=FPS, 
+        flip_method=0, 
+        sensor_id=0
+    )
+    print(f"전면 카메라 파이프라인: {pipeline_front}")
     cap_front = cv.VideoCapture(pipeline_front, cv.CAP_GSTREAMER)
     
-    # CSI 후면 카메라 (backcam) 초기화
-    pipeline_back = gstreamer_pipeline(FRAME_WIDTH, FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT, FPS, 0, "/dev/backcam")
+    # CSI 후면 카메라 (sensor-id=1) 초기화
+    pipeline_back = gstreamer_pipeline(
+        capture_width=FRAME_WIDTH, 
+        capture_height=FRAME_HEIGHT, 
+        display_width=FRAME_WIDTH, 
+        display_height=FRAME_HEIGHT, 
+        framerate=FPS, 
+        flip_method=0, 
+        sensor_id=1
+    )
+    print(f"후면 카메라 파이프라인: {pipeline_back}")
     cap_back = cv.VideoCapture(pipeline_back, cv.CAP_GSTREAMER)
     
+    # 카메라 연결 확인
     if not cap_front.isOpened():
-        print("❌ CSI frontcam 연결 실패")
+        print("❌ CSI frontcam (sensor-id=0) 연결 실패")
         exit(1)
+    else:
+        print("✅ CSI frontcam (sensor-id=0) 연결 성공")
         
-    if cap_back is not None and not cap_back.isOpened():
-        print("⚠️ CSI backcam 연결 실패 - 전면 카메라만 사용")
+    if not cap_back.isOpened():
+        print("⚠️ CSI backcam (sensor-id=1) 연결 실패 - 전면 카메라만 사용")
         cap_back = None
+    else:
+        print("✅ CSI backcam (sensor-id=1) 연결 성공")
 
 if cap_front is None or not cap_front.isOpened():
     print("❌ 전방 카메라 초기 연결 실패")
@@ -257,67 +249,20 @@ if cap_front is None or not cap_front.isOpened():
 # CSI 카메라는 GStreamer 파이프라인에서 해상도가 이미 설정됨
 print("✅ CSI 카메라 초기화 성공 - GStreamer 파이프라인 설정 사용")
 
-# 전방 카메라 안정화
-print("전방 카메라 안정화 중...")
-for i in range(10):
-    ret, frame = cap_front.read()
-    if ret:
-        print(f"전방 프레임 {i+1}/10 읽기 성공")
-    time.sleep(0.1)
-
-# 이제 원하는 해상도로 설정 -> 30 fps 유지 테스트를 위해 해상도 낮춤
-print("전방 카메라 목표 해상도 설정...")
-cap_front.set(cv.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
-cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
-cap_front.set(cv.CAP_PROP_FPS, FPS)
-
-# 전방 카메라 통합 설정 적용 (고급 설정 + 수동 설정 포함)
+# 전방 카메라 CSI 설정 적용
 try:
-    if current_platform == "Linux":  # Jetson 환경
-        configure_camera_manual_settings(cap_front, "전방 카메라", 
-                                        exposure=-6, wb_temp=4000, brightness=128, 
-                                        contrast=128, saturation=128, gain=15)
-    else:
-        # Windows 환경
-        configure_camera_manual_settings(cap_front, "전방 카메라", 
-                                        exposure=-6, wb_temp=4000, brightness=120, 
-                                        contrast=130, saturation=128, gain=20)
+    configure_csi_camera_settings(cap_front, "전방 카메라")
 except Exception as e:
-    print(f"전방 카메라 통합 설정 실패: {e}")
+    print(f"전방 카메라 설정 실패: {e}")
 
 # 후방 카메라 설정 (있는 경우)
 if cap_back is not None and cap_back.isOpened():
     print("후방 카메라 설정 중...")
-    
-    # 기본 해상도로 먼저 설정
-    cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 640)
-    cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
-    cap_back.set(cv.CAP_PROP_FPS, 30)
-    
-    # 후방 카메라 안정화
-    for i in range(10):
-        ret, frame = cap_back.read()
-        if ret:
-            print(f"후방 프레임 {i+1}/10 읽기 성공")
-        time.sleep(0.1)
-    
-    # 목표 해상도 설정
-    cap_back.set(cv.CAP_PROP_FRAME_WIDTH, FRAME_WIDTH)
-    cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT)
-    cap_back.set(cv.CAP_PROP_FPS, FPS)
-
-    # 후방 카메라 통합 설정 적용 (고급 설정 + 수동 설정 포함)
+    # 후방 카메라 CSI 설정 적용
     try:
-        if current_platform == "Linux":
-            configure_camera_manual_settings(cap_back, "후방 카메라", 
-                                            exposure=-6, wb_temp=4000, brightness=128, 
-                                            contrast=128, saturation=128, gain=15)
-        else:
-            configure_camera_manual_settings(cap_back, "후방 카메라", 
-                                            exposure=-6, wb_temp=4000, brightness=120, 
-                                            contrast=130, saturation=128, gain=20)
+        configure_csi_camera_settings(cap_back, "후방 카메라")
     except Exception as e:
-        print(f"후방 카메라 통합 설정 실패: {e}")
+        print(f"후방 카메라 설정 실패: {e}")
 else:
     cap_back = None
     print("후방 카메라 사용 불가")
