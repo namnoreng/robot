@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+"""
+Driving 모듈 - camera_test 최적화 적용
+- 개선된 거리 측정 알고리즘 적용
+- 터미널 거리값 출력 형식 통일 (cm 단위)
+- 예외 처리 강화
+- camera_test/csi_5x5_aruco_distance_fixed.py 방식 적용
+"""
+
 import cv2
 import cv2.aruco as aruco
 import numpy as np
@@ -8,9 +17,9 @@ import platform
 # 플랫폼 확인
 current_platform = platform.system()
 
-# 마커 크기 설정 - 실제 거리와 맞게 보정
+# 마커 크기 설정 - camera_test에서 검증된 최적화 값
 # 실제 측정값과 비교하여 조정: 0.05 * (실제거리/측정거리) ≈ 0.029
-marker_length = 0.029  # 보정된 마커 실제 길이(m)
+marker_length = 0.029  # camera_test에서 검증된 보정 값 (m)
 
 # OpenCV 버전 및 플랫폼에 따라 ArUco 파라미터 생성 방식 분기
 cv_version = cv2.__version__.split(".")
@@ -67,8 +76,9 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
             
             dx = center_x - FRAME_CENTER_X
             angle_error = z_angle
+            distance_cm = distance * 100
 
-            print(f"[Initialize] 중심 오차: ({dx}), 각도 오차: {angle_error:.2f} ({camera_type})")
+            print(f"[ID{marker_index}] Initialize Distance: {distance_cm:.1f}cm, Z-Angle: {angle_error:.1f}°, Center: ({center_x}, {center_y}) ({camera_type})")
 
             # 1. 회전값 먼저 맞추기
             if abs(angle_error) > ANGLE_TOLERANCE:
@@ -176,8 +186,8 @@ def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeff
 
         # 정보가 있으면 출력 및 동작
         if distance is not None:
-            print(f"ID: {marker_index} Rotation (X, Y, Z): ({x_angle:.2f}, {y_angle:.2f}, {z_angle:.2f})")
-            print(f"ID: {marker_index} Distance: {distance:.3f} m, Center: ({center_x}, {center_y})")
+            distance_cm = distance * 100
+            print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center_x}, {center_y})")
 
             # 시각화
             cv2.putText(
@@ -201,59 +211,77 @@ def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeff
 
 def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, marker_length):
     """
-    frame: 입력 이미지 (BGR)
-    aruco_dict, parameters: 아르코 딕셔너리 및 파라미터
-    marker_index: 찾고자 하는 마커 ID
-    camera_matrix, dist_coeffs: 카메라 보정값
-    marker_length: 마커 실제 길이(m)
-    반환값: (distance, (x_angle, y_angle, z_angle), (center_x, center_y)) 또는 (None, (None, None, None), (None, None))
+    개선된 ArUco 마커 거리 계산 (camera_test 버전 적용)
+    
+    Args:
+        frame: 입력 이미지 (BGR)
+        aruco_dict: ArUco 딕셔너리
+        parameters: ArUco 파라미터
+        marker_index: 찾고자 하는 마커 ID
+        camera_matrix: 카메라 매트릭스
+        dist_coeffs: 왜곡 계수
+        marker_length: 마커 실제 길이(m)
+    
+    Returns:
+        (distance, (x_angle, y_angle, z_angle), (center_x, center_y)) 
+        또는 (None, (None, None, None), (None, None))
     """
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+    if camera_matrix is None or dist_coeffs is None:
+        return None, (None, None, None), (None, None)
+    
+    try:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
 
-    if ids is not None:
-        for i in range(len(ids)):
-            if ids[i][0] == marker_index:
-                # 포즈 추정 (corners[i] → [corners[i]])
-                cv_version = cv2.__version__.split(".")
-                if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
-                    # OpenCV 3.2.x 이하
-                    rvecs, tvecs = aruco.estimatePoseSingleMarkers(
-                        np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
-                    )
-                else:
-                    # OpenCV 3.3.x 이상 또는 4.x
-                    rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(
-                        np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
-                    )
-                distance = np.linalg.norm(tvecs[0][0])
+        if ids is not None:
+            for i in range(len(ids)):
+                if ids[i][0] == marker_index:
+                    # 포즈 추정 (OpenCV 버전 호환성 처리)
+                    cv_version = cv2.__version__.split(".")
+                    if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
+                        # OpenCV 3.2.x 이하
+                        rvecs, tvecs = cv2.aruco.estimatePoseSingleMarkers(
+                            np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                        )
+                    else:
+                        # OpenCV 3.3.x 이상 또는 4.x
+                        rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+                            np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
+                        )
+                    
+                    distance = np.linalg.norm(tvecs[0][0])
 
-                # 회전 행렬 및 각도
-                rotation_matrix, _ = cv2.Rodrigues(rvecs[0][0])
-                sy = np.sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
-                singular = sy < 1e-6
+                    # 회전 행렬 및 각도
+                    rotation_matrix, _ = cv2.Rodrigues(rvecs[0][0])
+                    sy = np.sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
+                    singular = sy < 1e-6
 
-                if not singular:
-                    x_angle = np.arctan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
-                    y_angle = np.arctan2(-rotation_matrix[2, 0], sy)
-                    z_angle = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
-                else:
-                    x_angle = np.arctan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
-                    y_angle = np.arctan2(-rotation_matrix[2, 0], sy)
-                    z_angle = 0
+                    if not singular:
+                        x_angle = np.arctan2(rotation_matrix[2, 1], rotation_matrix[2, 2])
+                        y_angle = np.arctan2(-rotation_matrix[2, 0], sy)
+                        z_angle = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
+                    else:
+                        x_angle = np.arctan2(-rotation_matrix[1, 2], rotation_matrix[1, 1])
+                        y_angle = np.arctan2(-rotation_matrix[2, 0], sy)
+                        z_angle = 0
 
-                x_angle = np.degrees(x_angle)
-                y_angle = np.degrees(y_angle)
-                z_angle = np.degrees(z_angle)
+                    x_angle = np.degrees(x_angle)
+                    y_angle = np.degrees(y_angle)
+                    z_angle = np.degrees(z_angle)
 
-                # 중심점 좌표 계산
-                c = corners[i].reshape(4, 2)
-                center_x = int(np.mean(c[:, 0]))
-                center_y = int(np.mean(c[:, 1]))
+                    # 중심점 좌표 계산
+                    c = corners[i].reshape(4, 2)
+                    center_x = int(np.mean(c[:, 0]))
+                    center_y = int(np.mean(c[:, 1]))
 
-                return distance, (x_angle, y_angle, z_angle), (center_x, center_y)
-    # 못 찾으면 None 반환
-    return None, (None, None, None), (None, None)
+                    return distance, (x_angle, y_angle, z_angle), (center_x, center_y)
+        
+        # 해당 마커를 찾지 못함
+        return None, (None, None, None), (None, None)
+        
+    except Exception as e:
+        print(f"거리 계산 오류: {e}")
+        return None, (None, None, None), (None, None)
 
 def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters, 
                            camera_front_matrix, dist_front_coeffs,
@@ -301,7 +329,8 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
                         camera_back_matrix, dist_back_coeffs, marker_length
                     )
                     if back_distance is not None:
-                        print(f"[Driving] 후방 마커{back_marker_id} 감지: {back_distance:.3f}m")
+                        back_distance_cm = back_distance * 100
+                        print(f"[ID{back_marker_id}] 후방 Distance: {back_distance_cm:.1f}cm")
                         if back_distance < TARGET_DISTANCE:
                             back_marker_found = True
             
@@ -327,6 +356,9 @@ def advanced_parking_control(cap_front, cap_back, aruco_dict, parameters,
                                 )
                                 
                                 if distance is not None and distance < closest_distance:
+                                    distance_cm = distance * 100
+                                    print(f"[ID{front_marker_id}] 전방 Distance: {distance_cm:.1f}cm")
+                                    
                                     # 마커 중심 계산
                                     c = corners[i].reshape(4, 2)
                                     center_x = int(np.mean(c[:, 0]))
