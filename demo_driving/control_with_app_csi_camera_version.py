@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+CSI 카메라 전용 버전 - 로봇 제어 앱
+Jetson Nano CSI 카메라 전용 (USB 카메라 미지원)
+GStreamer 파이프라인을 통한 CSI 카메라 최적화
+"""
+
 # 기본적으로 필요한 모듈
 import cv2 as cv
 import numpy as np
@@ -18,6 +25,20 @@ FPS = 30
 
 # 기본 ArUco 인식 거리 설정 (미터 단위)
 DEFAULT_ARUCO_DISTANCE = 0.15
+
+def gstreamer_pipeline(capture_width=640, capture_height=480, 
+                      display_width=640, display_height=480, 
+                      framerate=30, flip_method=0, device="/dev/frontcam"):
+    """CSI 카메라용 GStreamer 파이프라인"""
+    return (
+        f"nvarguscamerasrc sensor-id=1 ! "
+        "video/x-raw(memory:NVMM), "
+        f"width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
+        "nvvidconv flip-method=" + str(flip_method) + " ! "
+        f"video/x-raw, width={display_width}, height={display_height}, format=BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=BGR ! appsink max-buffers=1 drop=true"
+    )
 
 def configure_camera_manual_settings(cap, camera_name="Camera", exposure=-7, wb_temp=4000, brightness=128, contrast=128, saturation=128, gain=0):
     """
@@ -201,42 +222,40 @@ def calculate_aruco_target_distance(measured_gap_mm):
     
     return target_distance_m
 
-# 카메라 초기화 (윈도우/리눅스 분기) - 안정성 및 성능 강화
-print("=== 카메라 초기화 시작 ===")
+# 카메라 초기화 (CSI 카메라 전용) - 안정성 및 성능 강화
+print("=== CSI 카메라 초기화 시작 ===")
 
-# 먼저 사용 가능한 카메라 인덱스 확인
-available_cameras = []
-for i in range(5):  # 0~4번 카메라 테스트
-    test_cap = cv.VideoCapture(i)
-    if test_cap.isOpened():
-        available_cameras.append(i)
-        test_cap.release()
-    time.sleep(0.1)  # 짧은 대기
-
-print(f"사용 가능한 카메라: {available_cameras}")
-
-if len(available_cameras) == 0:
-    print("❌ 사용 가능한 카메라가 없습니다.")
-    exit(1)
-
-# 카메라 초기화
+# CSI 카메라 초기화 (GStreamer 파이프라인 사용)
 if current_platform == "Windows":
-    cap_front = cv.VideoCapture(0, cv.CAP_DSHOW) if 0 in available_cameras else None
-    cap_back = cv.VideoCapture(1, cv.CAP_DSHOW) if 1 in available_cameras else None
+    print("❌ Windows 환경에서는 CSI 카메라를 지원하지 않습니다.")
+    print("   Jetson Nano 환경에서만 실행 가능합니다.")
+    exit(1)
 else:
-    # Jetson Nano에서 V4L2 백엔드 사용
-    cap_front = cv.VideoCapture(0, cv.CAP_V4L2) if 0 in available_cameras else None
-    cap_back = cv.VideoCapture(1, cv.CAP_V4L2) if 1 in available_cameras else None
-    print("Jetson 환경 - V4L2 백엔드 사용")
+    # Jetson에서 CSI 카메라 사용 (GStreamer 파이프라인)
+    print("Jetson 환경 - CSI 카메라 전용")
+    
+    # CSI 전면 카메라 (frontcam) 초기화
+    pipeline_front = gstreamer_pipeline(FRAME_WIDTH, FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT, FPS, 0, "/dev/frontcam")
+    cap_front = cv.VideoCapture(pipeline_front, cv.CAP_GSTREAMER)
+    
+    # CSI 후면 카메라 (backcam) 초기화
+    pipeline_back = gstreamer_pipeline(FRAME_WIDTH, FRAME_HEIGHT, FRAME_WIDTH, FRAME_HEIGHT, FPS, 0, "/dev/backcam")
+    cap_back = cv.VideoCapture(pipeline_back, cv.CAP_GSTREAMER)
+    
+    if not cap_front.isOpened():
+        print("❌ CSI frontcam 연결 실패")
+        exit(1)
+        
+    if cap_back is not None and not cap_back.isOpened():
+        print("⚠️ CSI backcam 연결 실패 - 전면 카메라만 사용")
+        cap_back = None
 
 if cap_front is None or not cap_front.isOpened():
     print("❌ 전방 카메라 초기 연결 실패")
     exit(1)
 
-# 기본 해상도로 먼저 설정 (안정성 우선)
-cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 640)
-cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
-cap_front.set(cv.CAP_PROP_FPS, 30)
+# CSI 카메라는 GStreamer 파이프라인에서 해상도가 이미 설정됨
+print("✅ CSI 카메라 초기화 성공 - GStreamer 파이프라인 설정 사용")
 
 # 전방 카메라 안정화
 print("전방 카메라 안정화 중...")
