@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+기본 설정 파일 - CSI 카메라 지원 버전
+Jetson Nano CSI 카메라 전용 (USB 카메라 미지원)
+GStreamer 파이프라인을 통한 CSI 카메라 최적화
+"""
+
 # 기본적으로 필요한 모듈
 import cv2 as cv
 import numpy as np
@@ -11,6 +18,41 @@ from cv2 import aruco
 import find_destination
 import detect_aruco
 import driving
+
+def gstreamer_pipeline(capture_width=640, capture_height=480, 
+                      display_width=640, display_height=480, 
+                      framerate=30, flip_method=0, sensor_id=0):
+    """CSI 카메라용 GStreamer 파이프라인"""
+    return (
+        f"nvarguscamerasrc sensor-id={sensor_id} ! "
+        "video/x-raw(memory:NVMM), "
+        f"width={capture_width}, height={capture_height}, framerate={framerate}/1 ! "
+        f"nvvidconv flip-method={flip_method} ! "
+        f"video/x-raw, width={display_width}, height={display_height}, format=BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=BGR ! appsink drop=true max-buffers=2"
+    )
+
+def configure_csi_camera_settings(cap, camera_name="CSI Camera"):
+    """CSI 카메라용 간단한 설정 함수"""
+    print(f"=== {camera_name} CSI 설정 확인 ===")
+    
+    try:
+        cap.set(cv.CAP_PROP_BUFFERSIZE, 1)  # 최소 버퍼로 지연 최소화
+        print("✅ CSI 카메라 버퍼 설정 완료")
+        
+        width = cap.get(cv.CAP_PROP_FRAME_WIDTH)
+        height = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
+        fps = cap.get(cv.CAP_PROP_FPS)
+        
+        print(f"현재 해상도: {width}x{height}")
+        print(f"현재 FPS: {fps}")
+        print("✅ CSI 카메라는 GStreamer 파이프라인 설정 사용")
+        
+    except Exception as e:
+        print(f"⚠️ {camera_name} 설정 확인 중 오류: {e}")
+    
+    print("=" * (len(camera_name) + 20))
 
 current_platform = platform.system()
 
@@ -77,54 +119,49 @@ param_markers = aruco.DetectorParameters_create()  # 레거시 방식 - 크래�
 
 print("ArUco 설정 완료 (레거시 DetectorParameters_create() 사용)")
 
-# 카메라 초기화 (플랫폼별 백엔드 설정)
+# 카메라 초기화 (CSI 카메라 지원)
+print("=== 카메라 초기화 시작 ===")
+
 if current_platform == 'Windows':
-#    cap_front = cv.VideoCapture(0, cv.CAP_DSHOW)  # Windows는 DirectShow 사용
-    cap_back = cv.VideoCapture(1, cv.CAP_DSHOW)   # 후방 카메라도 DirectShow
+    print("❌ Windows 환경에서는 CSI 카메라를 지원하지 않습니다.")
+    print("   Jetson Nano 환경에서만 실행 가능합니다.")
+    exit(1)
 elif current_platform == 'Linux':
-    # cap_front = cv.VideoCapture(0, cv.CAP_V4L2)   # Linux는 V4L2 사용 -> 잠시 카메라 하나만 사용
-    cap_back = cv.VideoCapture(0, cv.CAP_V4L2)    # 후방 카메라도 V4L2
+    print("Jetson 환경 - CSI 카메라 사용")
+    
+    # CSI 전면 카메라 (sensor-id=0) 초기화
+    pipeline_front = gstreamer_pipeline(
+        capture_width=640, capture_height=480, 
+        display_width=640, display_height=480, 
+        framerate=30, flip_method=0, sensor_id=0
+    )
+    cap_front = cv.VideoCapture(pipeline_front, cv.CAP_GSTREAMER)
+    
+    # CSI 후면 카메라 (sensor-id=1) 초기화  
+    pipeline_back = gstreamer_pipeline(
+        capture_width=640, capture_height=480, 
+        display_width=640, display_height=480, 
+        framerate=30, flip_method=0, sensor_id=1
+    )
+    cap_back = cv.VideoCapture(pipeline_back, cv.CAP_GSTREAMER)
+    
+    # 전면 카메라 연결 확인
+    if cap_front.isOpened():
+        print("✅ CSI front camera (sensor-id=0) 연결 성공")
+        configure_csi_camera_settings(cap_front, "전면 카메라")
+    else:
+        print("❌ CSI front camera 연결 실패")
+        cap_front = None
+    
+    # 후면 카메라 연결 확인
+    if cap_back.isOpened():
+        print("✅ CSI back camera (sensor-id=1) 연결 성공")
+        configure_csi_camera_settings(cap_back, "후면 카메라")
+    else:
+        print("⚠️ CSI back camera 연결 실패 - 전면 카메라만 사용")
+        cap_back = None
 
-print("카메라 설정 중...")
-# 전방 카메라 설정
-# cap_front.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
-# cap_front.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
-# cap_front.set(cv.CAP_PROP_FPS, 30)
-
-# 후방 카메라 설정
-cap_back.set(cv.CAP_PROP_FRAME_WIDTH, 640)
-cap_back.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
-cap_back.set(cv.CAP_PROP_FPS, 30)
-
-# 카메라 연결 확인 (타임아웃 추가)
-print("카메라 연결 확인 중...")
-
-# # 전방 카메라 확인
-# front_timeout = 0
-# while not cap_front.isOpened() and front_timeout < 10:  # 10초 타임아웃
-#     print("waiting for front camera")
-#     time.sleep(1)
-#     front_timeout += 1
-
-# if cap_front.isOpened():
-#     print("✅ front camera is opened")
-# else:
-#     print("❌ front camera 열기 실패 - 프로그램 종료")
-#     exit(1)
-
-# 후방 카메라 확인
-back_timeout = 0
-while not cap_back.isOpened() and back_timeout < 10:  # 10초 타임아웃
-    print("waiting for back camera")
-    time.sleep(1)
-    back_timeout += 1
-
-if cap_back.isOpened():
-    print("✅ back camera is opened")
-else:
-    print("⚠️  back camera 열기 실패 - front camera만 사용")
-    cap_back.release()
-    cap_back = None
+print("카메라 초기화 완료")
 
 return_message = b's'
 
@@ -202,7 +239,10 @@ while True:
 
     elif mode == mode_state["detect_aruco"]:
         # 아르코 마커 인식 모드
-        detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
+        if cap_front is not None:
+            detect_aruco.start_detecting_aruco(cap_front, marker_dict, param_markers)
+        else:
+            print("❌ 전면 카메라가 없어 ArUco 인식을 할 수 없습니다.")
 
     elif mode == mode_state["driving"]:
         # 거리 측정 모드
@@ -256,6 +296,12 @@ while True:
 
     elif mode == mode_state["auto_driving"]:
         print("코드 들어가는거 확인")
+        
+        # 전면 카메라 확인
+        if cap_front is None:
+            print("❌ 전면 카메라가 없어 자율주행을 할 수 없습니다.")
+            continue
+            
         car_number = input("주차할 차량 번호를 입력하세요: ")
         
         # 카메라 매트릭스 로드
@@ -340,7 +386,10 @@ while True:
 
     elif mode == mode_state["reset_position"]:
         print("위치 초기화 모드 진입")
-        driving.initialize_robot(cap_front, marker_dict, param_markers, 17,serial_server)
+        if cap_front is not None:
+            driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server)
+        else:
+            print("❌ 전면 카메라가 없어 위치 초기화를 할 수 없습니다.")
 
     elif mode == mode_state["stop"]:
         print("프로그램 종료")
