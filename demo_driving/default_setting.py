@@ -63,6 +63,7 @@ mode_state = {"default" : 0,
               "detect_distance" : 4,
               "auto_driving" : 5,
               "reset_position" : 6,
+              "marker10_alignment" : 7,
               "stop": "stop"}  # 모드 종류 설정
 
 mode = mode_state["default"]  # 초기 모드 설정
@@ -167,7 +168,7 @@ return_message = b's'
 
 while True:
     mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기\n" \
-    "4: 아르코마 마커 거리 인식하기, 5: 목표 설정 및 주행 해보기, 6: 위치 초기화): "))
+    "4: 아르코마 마커 거리 인식하기, 5: 목표 설정 및 주행 해보기, 6: 위치 초기화, 7: 10번 마커 중앙정렬 주행): "))
     if mode not in mode_state.values():
         print("잘못된 모드입니다. 다시 선택하세요.")
         continue
@@ -433,6 +434,78 @@ while True:
             driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server)
         else:
             print("❌ 전면 카메라가 없어 위치 초기화를 할 수 없습니다.")
+
+    elif mode == mode_state["marker10_alignment"]:
+        print("10번 마커 중앙정렬 주행 모드 진입")
+        
+        # 전면 카메라 확인
+        if cap_front is None:
+            print("❌ 전면 카메라가 없어 주행을 할 수 없습니다.")
+            continue
+            
+        # 시리얼 통신 확인
+        if serial_server is None:
+            print("❌ 시리얼 통신이 연결되지 않아 로봇을 제어할 수 없습니다.")
+            continue
+        
+        # 사용자 입력
+        try:
+            target_marker = int(input("찾을 목표 마커 번호를 입력하세요: "))
+            target_distance = float(input("목표 거리를 입력하세요 (m, 기본값 0.15): ") or "0.15")
+            direction = input("이동 방향을 입력하세요 (forward/backward, 기본값 forward): ").strip() or "forward"
+            
+            if direction not in ["forward", "backward"]:
+                print("❌ 잘못된 방향입니다. forward 또는 backward만 입력 가능합니다.")
+                continue
+                
+        except ValueError:
+            print("❌ 잘못된 입력입니다. 숫자를 입력해주세요.")
+            continue
+        
+        # 카메라 매트릭스 로드
+        try:
+            camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
+            dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
+            print("✅ 카메라 캘리브레이션 파일 로드 완료")
+        except FileNotFoundError:
+            print("❌ 카메라 캘리브레이션 파일을 찾을 수 없습니다.")
+            continue
+        
+        print(f"📍 설정 정보:")
+        print(f"  - 목표 마커: {target_marker}번")
+        print(f"  - 목표 거리: {target_distance}m")
+        print(f"  - 이동 방향: {direction}")
+        print(f"  - 정렬 기준: 10번 마커")
+        print("🚀 주행 시작! (ESC 키로 중단 가능)")
+        
+        # 진행 방향에 따른 초기 이동 명령
+        if direction == "forward":
+            serial_server.write(b"1")  # 직진 시작
+            print("직진 시작")
+        else:
+            serial_server.write(b"2")  # 후진 시작
+            print("후진 시작")
+        
+        # 10번 마커 중앙정렬 주행 실행
+        success = driving.driving_with_marker10_alignment(
+            cap_front, marker_dict, param_markers, 
+            target_marker_id=target_marker,
+            camera_matrix=camera_front_matrix, 
+            dist_coeffs=dist_front_coeffs,
+            target_distance=target_distance,
+            serial_server=serial_server,
+            direction=direction
+        )
+        
+        # 결과 출력
+        if success:
+            print("✅ 목표 마커에 성공적으로 도달했습니다!")
+        else:
+            print("❌ 주행이 중단되었습니다.")
+        
+        # 안전을 위해 정지
+        serial_server.write(b"9")
+        print("🛑 로봇 정지")
 
     elif mode == mode_state["stop"]:
         print("프로그램 종료")

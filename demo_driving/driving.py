@@ -627,15 +627,25 @@ def driving_with_marker10_alignment(cap, marker_dict, param_markers, target_mark
                         serial_server.write(direction_commands["stop"])
                         time.sleep(0.1)
                         
-                        # 평행이동으로 정렬
-                        if deviation_x > 0:  # 마커가 오른쪽에 있으면 우측 평행이동
-                            print(f"[Marker10 Alignment] 우측 평행이동 (편차: {deviation_x})")
-                            serial_server.write(direction_commands["right_slide"])
-                            time.sleep(0.2)  # 짧은 평행이동
-                        else:  # 마커가 왼쪽에 있으면 좌측 평행이동
-                            print(f"[Marker10 Alignment] 좌측 평행이동 (편차: {deviation_x})")
-                            serial_server.write(direction_commands["left_slide"])
-                            time.sleep(0.2)  # 짧은 평행이동
+                        # 진행 방향에 따른 평행이동 방향 결정
+                        if direction == "forward":
+                            # 직진 시: 마커가 오른쪽에 있으면 우측 이동
+                            if deviation_x > 0:
+                                print(f"[Marker10 Alignment] 직진-우측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["right_slide"])
+                            else:
+                                print(f"[Marker10 Alignment] 직진-좌측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["left_slide"])
+                        elif direction == "backward":
+                            # 후진 시: 마커가 오른쪽에 있으면 좌측 이동 (후진이므로 반대)
+                            if deviation_x > 0:
+                                print(f"[Marker10 Alignment] 후진-좌측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["left_slide"])
+                            else:
+                                print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["right_slide"])
+                        
+                        time.sleep(0.2)  # 짧은 평행이동
                         
                         # 평행이동 후 정지
                         serial_server.write(direction_commands["stop"])
