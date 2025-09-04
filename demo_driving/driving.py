@@ -249,6 +249,7 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
                             np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
                         )
                     
+                    # camera_test 방식과 동일: 3D 벡터 크기로 거리 계산
                     distance = np.linalg.norm(tvecs[0][0])
 
                     # 회전 행렬 및 각도

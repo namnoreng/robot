@@ -299,9 +299,9 @@ else:
     print("⚠️  back camera 사용 불가 - front camera만 사용")
     cap_back = None
 
-# npy 파일 불러오기
-camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
-dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
+# npy 파일 불러오기 - CSI 카메라용 캘리브레이션
+camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
+dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
 
 # 보정 행렬과 왜곡 계수를 불러옵니다.
 print("Loaded front camera matrix : \n", camera_front_matrix)
@@ -312,8 +312,8 @@ camera_back_matrix = None
 dist_back_coeffs = None
 if cap_back is not None:
     try:
-        camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
-        dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
+        camera_back_matrix = np.load(r"camera_test/calibration_result/camera_back_matrix.npy")
+        dist_back_coeffs = np.load(r"camera_test/calibration_result/dist_back_coeffs.npy")
         print("Loaded back camera matrix : \n", camera_back_matrix)
         print("Loaded back distortion coefficients : \n", dist_back_coeffs)
     except FileNotFoundError:

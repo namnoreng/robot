@@ -248,12 +248,12 @@ while True:
         # 거리 측정 모드
         marker_id = int(input("측정할 마커 ID를 입력하세요: "))
         
-        # 카메라 매트릭스 로드
+        # 카메라 매트릭스 로드 - CSI 카메라용 캘리브레이션
         try:
-            camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
-            dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
-            camera_back_matrix = np.load(r"camera_value/camera_back_matrix.npy")
-            dist_back_coeffs = np.load(r"camera_value/dist_back_coeffs.npy")
+            camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
+            dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
+            camera_back_matrix = np.load(r"camera_test/calibration_result/camera_back_matrix.npy")
+            dist_back_coeffs = np.load(r"camera_test/calibration_result/dist_back_coeffs.npy")
             marker_length = 0.05  # 마커 크기 (미터)
             
             print(f"마커 ID {marker_id}와의 거리 측정 중... (ESC로 종료)")
