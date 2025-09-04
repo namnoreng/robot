@@ -167,7 +167,7 @@ def calculate_aruco_target_distance(measured_gap_mm):
     OFFSET_MM = 0
     
     # 단순 빼기로 목표 거리 계산
-    target_distance_mm = measured_gap_mm - OFFSET_MM
+    target_distance_mm = 150 - (measured_gap_mm - OFFSET_MM)
 
     # 최소값 보정 (9cm = 90mm 이하로는 안됨)
     if target_distance_mm < 90:
