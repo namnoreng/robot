@@ -133,7 +133,7 @@ elif current_platform == 'Linux':
     pipeline_front = gstreamer_pipeline(
         capture_width=640, capture_height=480, 
         display_width=640, display_height=480, 
-        framerate=30, flip_method=0, sensor_id=0
+        framerate=30, flip_method=0, sensor_id=1
     )
     cap_front = cv.VideoCapture(pipeline_front, cv.CAP_GSTREAMER)
     
@@ -141,7 +141,7 @@ elif current_platform == 'Linux':
     pipeline_back = gstreamer_pipeline(
         capture_width=640, capture_height=480, 
         display_width=640, display_height=480, 
-        framerate=30, flip_method=0, sensor_id=1
+        framerate=30, flip_method=0, sensor_id=0
     )
     cap_back = cv.VideoCapture(pipeline_back, cv.CAP_GSTREAMER)
     
