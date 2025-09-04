@@ -263,22 +263,33 @@ while True:
                 if not ret:
                     break
                 
-                # driving.py의 find_aruco_info 함수 사용
+                # driving.py의 find_aruco_info 함수 사용 (csi_5x5_aruco 최적화 적용됨)
                 distance, (x_angle, y_angle, z_angle), (center_x, center_y) = driving.find_aruco_info(
                     frame, marker_dict, param_markers, marker_id, 
                     camera_front_matrix, dist_front_coeffs, marker_length
                 )
                 
                 if distance is not None:
-                    # 화면에 거리 정보 표시
-                    cv.putText(frame, f"Distance: {distance:.3f}m", 
-                              (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    # csi_5x5_aruco 방식: 거리 후처리 보정 (선택적)
+                    # 필요시 거리 보정 계수 적용 (현재는 원본 값 사용)
+                    corrected_distance = distance  # 보정 없음 (이미 왜곡 보정이 적용되어 정확함)
+                    
+                    # 화면에 거리 정보 표시 (cm 단위 추가)
+                    distance_cm = corrected_distance * 100
+                    cv.putText(frame, f"Distance: {corrected_distance:.3f}m ({distance_cm:.1f}cm)", 
+                              (10, 30), cv.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
                     cv.putText(frame, f"Marker ID: {marker_id}", 
                               (10, 70), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
                     cv.putText(frame, f"Angle Z: {z_angle:.1f} deg", 
                               (10, 110), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                     
-                    print(f"마커 {marker_id} 거리: {distance:.3f}m, Z각도: {z_angle:.1f}도")
+                    # csi_5x5_aruco 방식: 추가 정보 표시
+                    cv.putText(frame, f"Center: ({center_x}, {center_y})", 
+                              (10, 150), cv.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+                    cv.putText(frame, "CSI Optimized", 
+                              (10, 190), cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                    
+                    print(f"[ID{marker_id}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center_x}, {center_y})")
                 else:
                     cv.putText(frame, "Marker not found", 
                               (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)

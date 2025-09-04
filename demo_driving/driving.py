@@ -40,6 +40,39 @@ else:
     marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
     param_markers = aruco.DetectorParameters()
 
+# csi_5x5_aruco 방식: 5x5 마커에 최적화된 파라미터 적용
+print("🎯 5x5 ArUco 마커 최적화 파라미터 적용")
+try:
+    # 5x5 마커에 최적화된 파라미터
+    param_markers.adaptiveThreshWinSizeMin = 3
+    param_markers.adaptiveThreshWinSizeMax = 23
+    param_markers.adaptiveThreshWinSizeStep = 10
+    param_markers.adaptiveThreshConstant = 7
+    
+    # 검출 정확도 향상
+    param_markers.minMarkerPerimeterRate = 0.03  # 최소 마커 둘레 비율
+    param_markers.maxMarkerPerimeterRate = 4.0   # 최대 마커 둘레 비율
+    param_markers.polygonalApproxAccuracyRate = 0.03
+    param_markers.minCornerDistanceRate = 0.05
+    param_markers.minDistanceToBorder = 3
+    
+    # csi_5x5_aruco 핵심: 서브픽셀 코너 리파인먼트
+    param_markers.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+    param_markers.cornerRefinementWinSize = 5
+    param_markers.cornerRefinementMaxIterations = 30
+    param_markers.cornerRefinementMinAccuracy = 0.1
+    
+    # 5x5 특화 설정
+    param_markers.minMarkerLengthRatioOriginalImg = 0.02  # 작은 마커도 검출
+    
+    print("✅ csi_5x5_aruco 최적화 파라미터 적용 완료")
+    print("  🔧 서브픽셀 코너 리파인먼트 활성화")
+    print("  📐 5x5 마커 특화 검출 설정 완료")
+    
+except Exception as e:
+    print(f"⚠️ 파라미터 최적화 실패 (기본값 사용): {e}")
+    print("  기본 ArUco 파라미터로 동작합니다")
+
 def flush_camera(cap, num=5):
     for _ in range(num):
         cap.read()
@@ -211,7 +244,7 @@ def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeff
 
 def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, marker_length):
     """
-    개선된 ArUco 마커 거리 계산 (camera_test 버전 적용)
+    개선된 ArUco 마커 거리 계산 (csi_5x5_aruco 정확도 적용)
     
     Args:
         frame: 입력 이미지 (BGR)
@@ -230,7 +263,13 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
         return None, (None, None, None), (None, None)
     
     try:
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # csi_5x5_aruco 방식: 왜곡 보정 먼저 적용
+        if camera_matrix is not None and dist_coeffs is not None:
+            frame_undistorted = cv2.undistort(frame, camera_matrix, dist_coeffs)
+        else:
+            frame_undistorted = frame
+        
+        gray = cv2.cvtColor(frame_undistorted, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
 
         if ids is not None:
@@ -249,7 +288,7 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
                             np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
                         )
                     
-                    # camera_test 방식과 동일: 3D 벡터 크기로 거리 계산
+                    # csi_5x5_aruco 방식과 동일: 3D 벡터 크기로 거리 계산
                     distance = np.linalg.norm(tvecs[0][0])
 
                     # 회전 행렬 및 각도
@@ -270,10 +309,14 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
                     y_angle = np.degrees(y_angle)
                     z_angle = np.degrees(z_angle)
 
-                    # 중심점 좌표 계산
+                    # 중심점 좌표 계산 (왜곡 보정된 이미지 기준)
                     c = corners[i].reshape(4, 2)
                     center_x = int(np.mean(c[:, 0]))
                     center_y = int(np.mean(c[:, 1]))
+
+                    # csi_5x5_aruco 방식: 터미널 출력 (cm 단위)
+                    distance_cm = distance * 100
+                    print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center_x}, {center_y})")
 
                     return distance, (x_angle, y_angle, z_angle), (center_x, center_y)
         
