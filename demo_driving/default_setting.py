@@ -178,7 +178,7 @@ while True:
         
         # 카메라 화면과 ArUco 마커 인식을 실시간으로 표시
         while True:
-            ret, frame = cap_back.read()
+            ret, frame = cap_front.read()
             if not ret:
                 print("카메라에서 프레임을 읽을 수 없습니다.")
                 break
