@@ -176,6 +176,16 @@ while True:
         print("카메라 창에서 ArUco 마커를 실시간으로 확인하면서 조종하세요.")
         print("키보드 입력: 'q'로 종료, 다른 키는 시리얼로 전송됩니다.")
         
+        # 카메라 매트릭스 로드 - CSI 카메라용 캘리브레이션
+        try:
+            camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
+            dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
+            print("✅ 카메라 캘리브레이션 파일 로드 완료 - 왜곡 보정 적용")
+        except FileNotFoundError:
+            print("⚠️ 캘리브레이션 파일을 찾을 수 없습니다. 왜곡 보정 없이 진행합니다.")
+            camera_front_matrix = None
+            dist_front_coeffs = None
+        
         # 카메라 화면과 ArUco 마커 인식을 실시간으로 표시
         while True:
             ret, frame = cap_front.read()
@@ -183,31 +193,50 @@ while True:
                 print("카메라에서 프레임을 읽을 수 없습니다.")
                 break
             
-            # ArUco 마커 검출
+            # 왜곡 보정 적용 (캘리브레이션 파일이 있는 경우)
+            if camera_front_matrix is not None and dist_front_coeffs is not None:
+                frame_display = cv.undistort(frame, camera_front_matrix, dist_front_coeffs)
+            else:
+                frame_display = frame.copy()
+            
+            # ArUco 마커 검출 (원본 프레임에서)
             gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
             corners, ids, _ = aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
             
-            # 검출된 마커가 있으면 표시
+            # 검출된 마커가 있으면 표시 (표시용 프레임에)
             if ids is not None:
-                # 마커 경계 그리기
-                aruco.drawDetectedMarkers(frame, corners, ids)
+                # 마커 경계 그리기 (왜곡 보정된 프레임에 표시하기 위해 좌표 변환)
+                if camera_front_matrix is not None and dist_front_coeffs is not None:
+                    # 왜곡 보정된 프레임에 마커 그리기
+                    aruco.drawDetectedMarkers(frame_display, corners, ids)
+                else:
+                    # 왜곡 보정이 없으면 원본 프레임에 그리기
+                    aruco.drawDetectedMarkers(frame_display, corners, ids)
                 
-                # 각 마커의 거리 정보 표시
+                # 각 마커의 정보 표시
                 for i, marker_id in enumerate(ids.flatten()):
                     # 마커 중심점 계산
                     center_x = int(corners[i][0][:, 0].mean())
                     center_y = int(corners[i][0][:, 1].mean())
                     
-                    # 마커 ID와 위치 정보 텍스트 표시
-                    cv.putText(frame, f"ID: {marker_id}", 
+                    # 마커 ID와 위치 정보 텍스트 표시 (왜곡 보정된 프레임에)
+                    cv.putText(frame_display, f"ID: {marker_id}", 
                               (center_x - 30, center_y - 10), 
                               cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    cv.putText(frame, f"({center_x}, {center_y})", 
+                    cv.putText(frame_display, f"({center_x}, {center_y})", 
                               (center_x - 40, center_y + 20), 
                               cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
             
-            # 화면 표시
-            cv.imshow('Robot Control with ArUco Detection', frame)
+            # 왜곡 보정 상태 표시
+            if camera_front_matrix is not None and dist_front_coeffs is not None:
+                cv.putText(frame_display, "Undistortion: ON", 
+                          (10, 30), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            else:
+                cv.putText(frame_display, "Undistortion: OFF", 
+                          (10, 30), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            
+            # 화면 표시 (왜곡 보정된 프레임)
+            cv.imshow('Robot Control with ArUco Detection', frame_display)
             
             # 키보드 입력 처리 (1ms 대기)
             key = cv.waitKey(1) & 0xFF
