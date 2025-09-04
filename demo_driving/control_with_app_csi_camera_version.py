@@ -211,7 +211,7 @@ else:
         display_height=FRAME_HEIGHT, 
         framerate=FPS, 
         flip_method=0, 
-        sensor_id=0
+        sensor_id=1
     )
     print(f"전면 카메라 파이프라인: {pipeline_front}")
     cap_front = cv.VideoCapture(pipeline_front, cv.CAP_GSTREAMER)
@@ -224,7 +224,7 @@ else:
         display_height=FRAME_HEIGHT, 
         framerate=FPS, 
         flip_method=0, 
-        sensor_id=1
+        sensor_id=0
     )
     print(f"후면 카메라 파이프라인: {pipeline_back}")
     cap_back = cv.VideoCapture(pipeline_back, cv.CAP_GSTREAMER)
