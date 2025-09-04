@@ -60,7 +60,7 @@ mode_state = {"default" : 0,
               "find_empty_place" : 1, 
               "find_car" : 2, 
               "detect_aruco" : 3, 
-              "driving" : 4,
+              "detect_distance" : 4,
               "auto_driving" : 5,
               "reset_position" : 6,
               "stop": "stop"}  # 모드 종류 설정
@@ -244,7 +244,7 @@ while True:
         else:
             print("❌ 전면 카메라가 없어 ArUco 인식을 할 수 없습니다.")
 
-    elif mode == mode_state["driving"]:
+    elif mode == mode_state["detect_distance"]:
         # 거리 측정 모드
         marker_id = int(input("측정할 마커 ID를 입력하세요: "))
         
@@ -259,14 +259,14 @@ while True:
             print(f"마커 ID {marker_id}와의 거리 측정 중... (ESC로 종료)")
             
             while True:
-                ret, frame = cap_back.read()
+                ret, frame = cap_front.read()
                 if not ret:
                     break
                 
                 # driving.py의 find_aruco_info 함수 사용
                 distance, (x_angle, y_angle, z_angle), (center_x, center_y) = driving.find_aruco_info(
                     frame, marker_dict, param_markers, marker_id, 
-                    camera_back_matrix, dist_back_coeffs, marker_length
+                    camera_front_matrix, dist_front_coeffs, marker_length
                 )
                 
                 if distance is not None:
