@@ -516,19 +516,23 @@ def escape_from_parking(cap, aruco_dict, parameters, marker_index, camera_matrix
     cv2.destroyAllWindows()
     return False
 
-def driving_with_marker10_alignment(cap, marker_dict, param_markers, target_marker_id, 
-                                   camera_matrix, dist_coeffs, target_distance=0.15, 
+def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, target_marker_id, 
+                                   camera_front_matrix, dist_front_coeffs,
+                                   camera_back_matrix, dist_back_coeffs, target_distance=0.15, 
                                    serial_server=None, direction="forward"):
     """
     10번 마커를 기준으로 중앙 정렬하면서 특정 마커를 찾을 때까지 직진/후진하는 함수
     
     Parameters:
-    - cap: 카메라 객체
+    - cap_front: 전방 카메라 객체
+    - cap_back: 후방 카메라 객체 (후진 시 사용)
     - marker_dict: ArUco 마커 딕셔너리
     - param_markers: ArUco 검출 파라미터
     - target_marker_id: 찾을 목표 마커 ID
-    - camera_matrix: 카메라 매트릭스
-    - dist_coeffs: 왜곡 계수
+    - camera_front_matrix: 전방 카메라 매트릭스
+    - dist_front_coeffs: 전방 카메라 왜곡 계수
+    - camera_back_matrix: 후방 카메라 매트릭스
+    - dist_back_coeffs: 후방 카메라 왜곡 계수
     - target_distance: 목표 거리 (m)
     - serial_server: 시리얼 통신 객체
     - direction: 이동 방향 ("forward" 또는 "backward")
@@ -539,6 +543,31 @@ def driving_with_marker10_alignment(cap, marker_dict, param_markers, target_mark
     
     print(f"[Marker10 Alignment] 시작 - 목표 마커: {target_marker_id}, 방향: {direction}")
     print("[Marker10 Alignment] 10번 마커로 중앙 정렬하면서 진행합니다.")
+    
+    # 방향에 따라 사용할 카메라와 매트릭스 선택
+    if direction == "forward":
+        cap = cap_front
+        camera_matrix = camera_front_matrix
+        dist_coeffs = dist_front_coeffs
+        print("[Marker10 Alignment] 전방 카메라 사용")
+    elif direction == "backward":
+        if cap_back is not None and camera_back_matrix is not None and dist_back_coeffs is not None:
+            cap = cap_back
+            camera_matrix = camera_back_matrix
+            dist_coeffs = dist_back_coeffs
+            print("[Marker10 Alignment] 후방 카메라 사용")
+        else:
+            print("[Marker10 Alignment] 후방 카메라가 없어 전방 카메라로 대체")
+            cap = cap_front
+            camera_matrix = camera_front_matrix
+            dist_coeffs = dist_front_coeffs
+    else:
+        print(f"[Marker10 Alignment] 잘못된 방향: {direction}")
+        return False
+    
+    if cap is None or not cap.isOpened():
+        print("[Marker10 Alignment] 카메라가 연결되지 않았습니다.")
+        return False
     
     # 화면 중앙 계산
     frame_center_x = 320  # 640x480 해상도 기준

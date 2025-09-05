@@ -466,9 +466,20 @@ while True:
         try:
             camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
             dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
-            print("✅ 카메라 캘리브레이션 파일 로드 완료")
+            print("✅ 전방 카메라 캘리브레이션 파일 로드 완료")
+            
+            # 후방 카메라 캘리브레이션 파일 로드 (있는 경우)
+            try:
+                camera_back_matrix = np.load(r"camera_test/calibration_result/camera_back_matrix.npy")
+                dist_back_coeffs = np.load(r"camera_test/calibration_result/dist_back_coeffs.npy")
+                print("✅ 후방 카메라 캘리브레이션 파일 로드 완료")
+            except FileNotFoundError:
+                print("⚠️ 후방 카메라 캘리브레이션 파일 없음 - 전방 카메라만 사용")
+                camera_back_matrix = None
+                dist_back_coeffs = None
+                
         except FileNotFoundError:
-            print("❌ 카메라 캘리브레이션 파일을 찾을 수 없습니다.")
+            print("❌ 전방 카메라 캘리브레이션 파일을 찾을 수 없습니다.")
             continue
         
         print(f"📍 설정 정보:")
@@ -488,10 +499,12 @@ while True:
         
         # 10번 마커 중앙정렬 주행 실행
         success = driving.driving_with_marker10_alignment(
-            cap_front, marker_dict, param_markers, 
+            cap_front, cap_back, marker_dict, param_markers, 
             target_marker_id=target_marker,
-            camera_matrix=camera_front_matrix, 
-            dist_coeffs=dist_front_coeffs,
+            camera_front_matrix=camera_front_matrix, 
+            dist_front_coeffs=dist_front_coeffs,
+            camera_back_matrix=camera_back_matrix,
+            dist_back_coeffs=dist_back_coeffs,
             target_distance=target_distance,
             serial_server=serial_server,
             direction=direction
