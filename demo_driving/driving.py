@@ -556,7 +556,7 @@ def driving_with_marker10_alignment(cap, marker_dict, param_markers, target_mark
     }
     
     last_alignment_time = time.time()
-    alignment_interval = 0.5  # 정렬 명령 간격 (초)
+    alignment_interval = 0.2  # 정렬 명령 간격 (초)
     
     while True:
         ret, frame = cap.read()
