@@ -111,7 +111,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
             angle_error = z_angle
             distance_cm = distance * 100
 
-            print(f"[ID{marker_index}] Initialize Distance: {distance_cm:.1f}cm, Z-Angle: {angle_error:.1f}°, Center: ({center_x}, {center_y}) ({camera_type})")
+            print(f"[ID{marker_index}] Initialize Distance: {distance_cm:.1f}cm, Z-Angle: {angle_error:.1f}, Center: ({center_x}, {center_y}) ({camera_type})")
 
             # 1. 회전값 먼저 맞추기
             if abs(angle_error) > ANGLE_TOLERANCE:
@@ -220,7 +220,7 @@ def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeff
         # 정보가 있으면 출력 및 동작
         if distance is not None:
             distance_cm = distance * 100
-            print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center_x}, {center_y})")
+            print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}, Center: ({center_x}, {center_y})")
 
             # 시각화
             cv2.putText(
@@ -316,7 +316,7 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
 
                     # csi_5x5_aruco 방식: 터미널 출력 (cm 단위)
                     distance_cm = distance * 100
-                    print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center_x}, {center_y})")
+                    print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}, Center: ({center_x}, {center_y})")
 
                     return distance, (x_angle, y_angle, z_angle), (center_x, center_y)
         
@@ -592,7 +592,6 @@ def driving_with_marker10_alignment(cap, marker_dict, param_markers, target_mark
                     print(f"[Marker10 Alignment] 목표 거리 도달! 완료")
                     if serial_server:
                         serial_server.write(direction_commands["stop"])
-                    cv2.destroyAllWindows()
                     return True
             
             # 10번 마커 중앙 정렬 처리
@@ -606,18 +605,6 @@ def driving_with_marker10_alignment(cap, marker_dict, param_markers, target_mark
                 
                 # 중앙에서의 편차 계산
                 deviation_x = center_x - frame_center_x
-                
-                # 화면에 정보 표시
-                cv2.circle(undistorted_frame, (center_x, center_y), 5, (0, 255, 0), -1)  # 마커 중심
-                cv2.circle(undistorted_frame, (frame_center_x, 240), 5, (0, 0, 255), -1)  # 화면 중심
-                cv2.line(undistorted_frame, (frame_center_x, 0), (frame_center_x, 480), (0, 0, 255), 2)  # 중앙선
-                
-                cv2.putText(undistorted_frame, f"Marker 10 Center: ({center_x}, {center_y})", 
-                           (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                cv2.putText(undistorted_frame, f"Deviation X: {deviation_x}", 
-                           (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-                cv2.putText(undistorted_frame, f"Target Marker: {target_marker_id}", 
-                           (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
                 
                 # 중앙 정렬이 필요한 경우 (일정 간격으로만 실행)
                 current_time = time.time()
@@ -654,37 +641,20 @@ def driving_with_marker10_alignment(cap, marker_dict, param_markers, target_mark
                         # 다시 원래 방향으로 진행
                         serial_server.write(direction_commands[direction])
                         last_alignment_time = current_time
-                
-                # 정렬 상태 표시
-                if abs(deviation_x) <= alignment_tolerance:
-                    cv2.putText(undistorted_frame, "ALIGNED", 
-                               (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-                else:
-                    cv2.putText(undistorted_frame, "ALIGNING...", 
-                               (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
             
+            # 10번 마커가 없는 경우는 별도 처리 없음 (콘솔 메시지만)
             else:
-                # 10번 마커가 없는 경우
-                cv2.putText(undistorted_frame, "Marker 10 not found", 
-                           (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-                cv2.putText(undistorted_frame, f"Searching Target: {target_marker_id}", 
-                           (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                pass  # 10번 마커가 없을 때는 그냥 진행
         
+        # 마커가 전혀 없는 경우도 별도 처리 없음
         else:
-            # 마커가 전혀 없는 경우
-            cv2.putText(undistorted_frame, "No markers detected", 
-                       (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-        
-        # 화면 표시
-        cv2.imshow("Marker 10 Alignment Driving", undistorted_frame)
+            pass  # 마커가 없을 때는 그냥 진행
         
         # ESC 키로 종료
         if cv2.waitKey(1) & 0xFF == 27:
             print("[Marker10 Alignment] 사용자가 중단했습니다")
             if serial_server:
                 serial_server.write(direction_commands["stop"])
-            cv2.destroyAllWindows()
             return False
     
-    cv2.destroyAllWindows()
     return False
