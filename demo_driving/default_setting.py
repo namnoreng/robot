@@ -324,7 +324,7 @@ while True:
                     
                     print(f"[ID{marker_id}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center_x}, {center_y})")
                 else:
-                    cv.putText(frame_display, "Marker not found", 
+                    cv.putText(frame_display, "Marker not found",
                               (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 
                 cv.imshow("Distance Measurement", frame_display)
