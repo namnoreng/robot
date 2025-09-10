@@ -169,17 +169,17 @@ def calculate_aruco_target_distance(measured_gap_mm):
     # 단순 빼기로 목표 거리 계산
     target_distance_mm = 150 - (measured_gap_mm - OFFSET_MM)
 
-    # 최소값 보정 (9cm = 90mm 이하로는 안됨)
-    if target_distance_mm < 90:
+    # 최소값 보정 (10cm = 100mm 이하로는 안됨)
+    if target_distance_mm < 100:
         print(f"[거리 계산] 계산된 거리({target_distance_mm}mm)가 너무 작음 - 최소 거리 사용")
-        target_distance_mm = 90  # 최소 9cm
+        target_distance_mm = 100  # 최소 10cm
 
     # mm를 m로 변환
     target_distance_m = target_distance_mm / 1000.0
-    
-    # 안전 범위 제한 (0.09m ~ 0.2m)
-    target_distance_m = max(0.09, min(0.2, target_distance_m))
-    
+
+    # 안전 범위 제한 (0.1m ~ 0.2m)
+    target_distance_m = max(0.1, min(0.2, target_distance_m))
+
     print(f"[거리 계산] 측정 거리: {measured_gap_mm}mm")
     print(f"[거리 계산] 오프셋: {OFFSET_MM}mm")
     print(f"[거리 계산] 목표 거리: {target_distance_mm}mm ({target_distance_m:.3f}m)")
@@ -209,6 +209,7 @@ else:
         flip_method=0, 
         sensor_id=1
     )
+    
     print(f"전면 카메라 파이프라인: {pipeline_front}")
     cap_front = cv.VideoCapture(pipeline_front, cv.CAP_GSTREAMER)
     
@@ -222,6 +223,7 @@ else:
         flip_method=0, 
         sensor_id=0
     )
+
     print(f"후면 카메라 파이프라인: {pipeline_back}")
     cap_back = cv.VideoCapture(pipeline_back, cv.CAP_GSTREAMER)
     
