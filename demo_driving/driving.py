@@ -521,7 +521,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                                    camera_back_matrix, dist_back_coeffs, target_distance=0.15, 
                                    serial_server=None, direction="forward"):
     """
-    10번 마커를 기준으로 먼저 중앙 정렬을 완료한 후, 특정 마커를 찾을 때까지 직진/후진하는 함수
+    10번 마커를 기준으로 중앙 정렬하면서 특정 마커를 찾을 때까지 직진/후진하는 함수
     
     Parameters:
     - cap_front: 전방 카메라 객체
@@ -542,7 +542,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     """
     
     print(f"[Marker10 Alignment] 시작 - 목표 마커: {target_marker_id}, 방향: {direction}")
-    print("[Marker10 Alignment] 단계1: 10번 마커 중앙 정렬 먼저 완료")
+    print("[Marker10 Alignment] 10번 마커로 중앙 정렬하면서 진행합니다.")
     
     # 방향에 따라 사용할 카메라와 매트릭스 선택
     if direction == "forward":
@@ -571,7 +571,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     
     # 화면 중앙 계산
     frame_center_x = 320  # 640x480 해상도 기준
-    alignment_tolerance = 30  # 중앙 정렬 허용 오차 (픽셀) - 더 정밀하게 조정
+    alignment_tolerance = 40  # 중앙 정렬 허용 오차 (픽셀)
     
     # 방향별 시리얼 명령
     direction_commands = {
@@ -584,80 +584,8 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
         "stop": b"9"          # 정지
     }
     
-    # ===== 단계 1: 10번 마커 중앙 정렬 완료 =====
-    print("[Marker10 Alignment] 단계1: 10번 마커 중앙 정렬 중...")
-    alignment_complete = False
-    alignment_timeout = 30  # 30초 타임아웃
-    alignment_start_time = time.time()
-    
-    while not alignment_complete and (time.time() - alignment_start_time) < alignment_timeout:
-        ret, frame = cap.read()
-        if not ret:
-            print("[Marker10 Alignment] 카메라 프레임 읽기 실패")
-            break
-        
-        # 왜곡 보정 적용
-        undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs)
-        gray = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2GRAY)
-        
-        # ArUco 마커 검출
-        corners, ids, _ = aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
-        
-        # 10번 마커 찾기
-        if ids is not None and 10 in ids.flatten():
-            marker10_idx = np.where(ids.flatten() == 10)[0][0]
-            marker10_corners = corners[marker10_idx]
-            
-            # 10번 마커 중심점 계산
-            center_x = int(marker10_corners[0][:, 0].mean())
-            deviation_x = center_x - frame_center_x
-            
-            print(f"[Marker10 Alignment] 10번 마커 중심: {center_x}, 편차: {deviation_x}")
-            
-            # 중앙 정렬 체크
-            if abs(deviation_x) <= alignment_tolerance:
-                print("[Marker10 Alignment] 단계1 완료: 10번 마커 중앙 정렬 성공!")
-                alignment_complete = True
-                if serial_server:
-                    serial_server.write(direction_commands["stop"])
-                    time.sleep(0.5)  # 안정화
-            else:
-                # 중앙 정렬 필요
-                if serial_server:
-                    # 진행 방향에 따른 평행이동 방향 결정
-                    if direction == "forward":
-                        # 직진 시: 마커가 오른쪽에 있으면 우측 이동
-                        if deviation_x > 0:
-                            print(f"[Marker10 Alignment] 직진-우측 평행이동 (편차: {deviation_x})")
-                            serial_server.write(direction_commands["right_slide"])
-                        else:
-                            print(f"[Marker10 Alignment] 직진-좌측 평행이동 (편차: {deviation_x})")
-                            serial_server.write(direction_commands["left_slide"])
-                    elif direction == "backward":
-                        # 후진 시: 마커가 오른쪽에 있으면 좌측 이동 (후진이므로 반대)
-                        if deviation_x > 0:
-                            print(f"[Marker10 Alignment] 후진-좌측 평행이동 (편차: {deviation_x})")
-                            serial_server.write(direction_commands["left_slide"])
-                        else:
-                            print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
-                            serial_server.write(direction_commands["right_slide"])
-                    
-                    time.sleep(0.3)  # 평행이동 시간
-                    serial_server.write(direction_commands["stop"])
-                    time.sleep(0.2)  # 안정화
-        else:
-            print("[Marker10 Alignment] 10번 마커를 찾을 수 없습니다.")
-            time.sleep(0.1)
-    
-    if not alignment_complete:
-        print("[Marker10 Alignment] 단계1 실패: 10번 마커 중앙 정렬 타임아웃")
-        return False
-    
-    # ===== 단계 2: 중앙정렬 상태에서 목표 마커까지 직진/후진 =====
-    print(f"[Marker10 Alignment] 단계2: 목표 마커 {target_marker_id}까지 {direction} 시작")
-    
-    if serial_server:
-        serial_server.write(direction_commands[direction])  # 직진/후진 시작
+    last_alignment_time = time.time()
+    alignment_interval = 0.2  # 정렬 명령 간격 (초)
     
     while True:
         ret, frame = cap.read()
@@ -672,24 +600,85 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
         # ArUco 마커 검출
         corners, ids, _ = aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
         
-        # 목표 마커 확인
-        if ids is not None and target_marker_id in ids.flatten():
-            target_idx = np.where(ids.flatten() == target_marker_id)[0][0]
+        # 검출된 마커가 있는 경우
+        if ids is not None:
+            ids = ids.flatten()
             
-            # 목표 마커와의 거리 측정
-            target_rvecs, target_tvecs, _ = aruco.estimatePoseSingleMarkers(
-                corners[target_idx:target_idx+1], marker_length, camera_matrix, dist_coeffs
-            )
-            target_distance_measured = np.linalg.norm(target_tvecs[0][0])
+            # 목표 마커 확인
+            if target_marker_id in ids:
+                target_idx = np.where(ids == target_marker_id)[0][0]
+                
+                # 목표 마커와의 거리 측정
+                target_rvecs, target_tvecs, _ = aruco.estimatePoseSingleMarkers(
+                    corners[target_idx:target_idx+1], marker_length, camera_matrix, dist_coeffs
+                )
+                target_distance_measured = np.linalg.norm(target_tvecs[0][0])
+                
+                print(f"[Marker10 Alignment] 목표 마커 {target_marker_id} 발견! 거리: {target_distance_measured:.3f}m")
+                
+                # 목표 거리에 도달했으면 완료
+                if target_distance_measured <= target_distance:
+                    print(f"[Marker10 Alignment] 목표 거리 도달! 완료")
+                    if serial_server:
+                        serial_server.write(direction_commands["stop"])
+                    return True
             
-            print(f"[Marker10 Alignment] 목표 마커 {target_marker_id} 발견! 거리: {target_distance_measured:.3f}m")
+            # 10번 마커 중앙 정렬 처리
+            if 10 in ids:
+                marker10_idx = np.where(ids == 10)[0][0]
+                marker10_corners = corners[marker10_idx]
+                
+                # 10번 마커 중심점 계산
+                center_x = int(marker10_corners[0][:, 0].mean())
+                center_y = int(marker10_corners[0][:, 1].mean())
+                
+                # 중앙에서의 편차 계산
+                deviation_x = center_x - frame_center_x
+                
+                # 중앙 정렬이 필요한 경우 (일정 간격으로만 실행)
+                current_time = time.time()
+                if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
+                    if serial_server:
+                        # 현재 진행 방향 정지
+                        # serial_server.write(direction_commands["stop"])
+                        # time.sleep(0.1)
+                        
+                        # 진행 방향에 따른 평행이동 방향 결정
+                        if direction == "forward":
+                            # 직진 시: 마커가 오른쪽에 있으면 우측 이동
+                            if deviation_x > 0:
+                                print(f"[Marker10 Alignment] 직진-우측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["right_slide"])
+                            else:
+                                print(f"[Marker10 Alignment] 직진-좌측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["left_slide"])
+                        elif direction == "backward":
+                            # 후진 시: 마커가 오른쪽에 있으면 좌측 이동 (후진이므로 반대)
+                            if deviation_x > 0:
+                                print(f"[Marker10 Alignment] 후진-좌측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["left_slide"])
+                            else:
+                                print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["right_slide"])
+                        
+                        time.sleep(0.2)  # 짧은 평행이동
+                        
+                        # 평행이동 후 정지
+                        # serial_server.write(direction_commands["stop"])
+                        # time.sleep(0.1)
+
+                else :        
+                    # 다시 원래 방향으로 진행
+                    serial_server.write(direction_commands[direction])
+                    last_alignment_time = current_time
             
-            # 목표 거리에 도달했으면 완료
-            if target_distance_measured <= target_distance:
-                print(f"[Marker10 Alignment] 단계2 완료: 목표 거리 도달!")
-                if serial_server:
-                    serial_server.write(direction_commands["stop"])
-                return True
+            # 10번 마커가 없는 경우는 별도 처리 없음 (콘솔 메시지만)
+            else:
+                pass  # 10번 마커가 없을 때는 그냥 진행
+        
+        # 마커가 전혀 없는 경우도 별도 처리 없음
+        else:
+            pass  # 마커가 없을 때는 그냥 진행
         
         # ESC 키로 종료
         if cv2.waitKey(1) & 0xFF == 27:
