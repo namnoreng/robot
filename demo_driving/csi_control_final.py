@@ -448,7 +448,7 @@ try:
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker=sector, direction="forward", 
+                                                        target_marker_id=sector, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=dynamic_target_distance, serial_server=serial_server)
@@ -509,7 +509,7 @@ try:
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker=subzone, direction="forward", 
+                                                        target_marker_id=subzone, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=dynamic_target_distance, serial_server=serial_server)
@@ -596,7 +596,7 @@ try:
                 print(f"[Client] 동적 인식 거리 {dynamic_target_distance:.3f}m 사용")
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=1, direction="backward", 
+                                                            target_marker_id=1, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=dynamic_target_distance, serial_server=serial_server)
@@ -680,7 +680,7 @@ try:
                 driving.flush_camera(cap_front, 5)
                 print("[Client] 마커 2번 인식 중... (마커10 중앙정렬)")
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker=2, direction="forward", 
+                                                        target_marker_id=2, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=dynamic_target_distance, serial_server=serial_server)
@@ -691,7 +691,7 @@ try:
                 # 이제 0번 마커 인식 (두 번째 0번이어야 함) (중앙정렬)
                 print("[Client] 두 번째 0번 마커 인식 시작... (마커10 중앙정렬)")
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker=0, direction="forward", 
+                                                        target_marker_id=0, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=dynamic_target_distance, serial_server=serial_server)
@@ -738,7 +738,7 @@ try:
                 # 뒷카메라로 마커 0번 인식 (중앙정렬)
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=0, direction="backward", 
+                                                            target_marker_id=0, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=dynamic_target_distance, serial_server=serial_server)
@@ -786,7 +786,7 @@ try:
                 # 뒷카메라로 마커 3번 인식 (중앙정렬)
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=3, direction="backward", 
+                                                            target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
@@ -893,7 +893,7 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"1")
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker=sector, direction="forward", 
+                                                        target_marker_id=sector, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
@@ -946,7 +946,7 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"1")
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker=subzone, direction="forward", 
+                                                        target_marker_id=subzone, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
@@ -1076,13 +1076,13 @@ try:
                     serial_server.write(b"2")
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=0, direction="backward", 
+                                                            target_marker_id=0, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=dynamic_target_distance_out, serial_server=serial_server)
                 else:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=0, direction="backward", 
+                                                            target_marker_id=0, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=dynamic_target_distance_out, serial_server=serial_server)
@@ -1120,13 +1120,13 @@ try:
                     serial_server.write(b"2")
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=3, direction="backward", 
+                                                            target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
                 else:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=3, direction="backward", 
+                                                            target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
@@ -1166,7 +1166,7 @@ try:
                 print(f"[Client] 동적 인식 거리 {dynamic_target_distance_out:.3f}m 사용")
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=17, direction="backward", 
+                                                            target_marker_id=17, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=dynamic_target_distance_out, serial_server=serial_server)
@@ -1240,7 +1240,7 @@ try:
                     serial_server.write(b"1")  # 전진
                 # 로봇 초기 위치까지 전진 (마커 17 인식, 중앙정렬)
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker=17, direction="forward", 
+                                                        target_marker_id=17, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
@@ -1268,7 +1268,7 @@ try:
         elif command == "driving":
             # 기본 driving 명령도 중앙정렬 버전으로 교체 (마커 17번 기본 사용)
             driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                    target_marker=17, direction="forward", 
+                                                    target_marker_id=17, direction="forward", 
                                                     camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                     camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                     target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
