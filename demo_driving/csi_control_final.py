@@ -602,14 +602,13 @@ try:
                                                             target_distance=dynamic_target_distance, serial_server=serial_server)
                     print("[Client] 뒷카메라로 마커 1번 인식 완료 (중앙정렬)")
                 else:
-                    # 뒷카메라가 없으면 전방카메라로 대체
-                    print("[Client] 뒷카메라가 없어 전방카메라로 대체 (중앙정렬)")
-                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=1, direction="backward", 
-                                                            camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                            camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=dynamic_target_distance, serial_server=serial_server)
-                    print("[Client] 전방카메라로 마커 1번 인식 완료 (중앙정렬)")
+                    # 뒷카메라가 없으면 에러 처리
+                    print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
+                    print("❌ [ERROR] 후진 동작을 수행할 수 없습니다.")
+                    if serial_server is not None:
+                        serial_server.write(b"9")  # 긴급 정지
+                    client_socket.sendall(b"ERROR: Rear camera not available for backward movement\n")
+                    continue
                 
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
@@ -744,12 +743,12 @@ try:
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=dynamic_target_distance, serial_server=serial_server)
                 else:
-                    print("[Client] 뒷카메라가 없어 전방카메라로 대체 (중앙정렬)")
-                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=0, direction="backward", 
-                                                            camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                            camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=dynamic_target_distance, serial_server=serial_server)               
+                    print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
+                    print("❌ [ERROR] 후진 복귀 동작을 수행할 수 없습니다.")
+                    if serial_server is not None:
+                        serial_server.write(b"9")  # 긴급 정지
+                    client_socket.sendall(b"ERROR: Rear camera not available for backward return\n")
+                    continue               
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode()) # sector 도착
@@ -792,12 +791,12 @@ try:
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
                 else:
-                    print("[Client] 뒷카메라가 없어 전방카메라로 대체 (중앙정렬)")
-                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=3, direction="backward", 
-                                                            camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                            camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=DEFAULT_ARUCO_DISTANCE, serial_server=serial_server)
+                    print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
+                    print("❌ [ERROR] 초기 위치 복귀를 위한 후진 동작을 수행할 수 없습니다.")
+                    if serial_server is not None:
+                        serial_server.write(b"9")  # 긴급 정지
+                    client_socket.sendall(b"ERROR: Rear camera not available for return to start\n")
+                    continue
                 if serial_server is not None:
                     client_socket.sendall(f"starting_point,0,None,None\n".encode())
                     serial_server.write(b"9")  # 정지
@@ -1173,14 +1172,13 @@ try:
                                                             target_distance=dynamic_target_distance_out, serial_server=serial_server)
                     print("[Client] 뒷카메라로 마커 17번 인식 완료 (중앙정렬)")
                 else:
-                    # 뒷카메라가 없으면 전방카메라로 대체
-                    print("[Client] 뒷카메라가 없어 전방카메라로 대체 (중앙정렬)")
-                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker=17, direction="backward", 
-                                                            camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                            camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=dynamic_target_distance_out, serial_server=serial_server)
-                    print("[Client] 전방카메라로 마커 17번 인식 완료 (중앙정렬)")
+                    # 뒷카메라가 없으면 에러 처리
+                    print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
+                    print("❌ [ERROR] 출차 후 대기공간 복귀를 위한 후진 동작을 수행할 수 없습니다.")
+                    if serial_server is not None:
+                        serial_server.write(b"9")  # 긴급 정지
+                    client_socket.sendall(b"ERROR: Rear camera not available for return to waiting area\n")
+                    continue
                 
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
