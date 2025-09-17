@@ -690,3 +690,145 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
             return False
     
     return False
+
+def sensor_based_backward_with_alignment(cap, marker_dict, param_markers, 
+                                       camera_matrix, dist_coeffs, serial_server,
+                                       target_sensor_signal='a', alignment_marker_id=10):
+    """
+    센서 신호를 기다리면서 마커 기준 중앙정렬 후진
+    ⚠️ 중요: 센서 신호 수신 시 즉시 함수 종료하여 리니어 모터 동작 방해 방지
+    
+    Args:
+    - cap: 카메라 객체
+    - marker_dict: ArUco 마커 딕셔너리
+    - param_markers: ArUco 검출 파라미터
+    - camera_matrix, dist_coeffs: 카메라 캘리브레이션 파라미터
+    - serial_server: 시리얼 통신 객체
+    - target_sensor_signal: 대기할 센서 신호 (기본 'a')
+    - alignment_marker_id: 중앙정렬 기준 마커 ID (기본 10)
+    
+    Returns:
+    - True: 센서 신호 수신 성공 (즉시 함수 종료)
+    - False: 실패 또는 중단
+    
+    동작 순서:
+    1. 후진하면서 마커 기준 중앙정렬 수행
+    2. 센서 신호 수신 시 즉시 정지 후 함수 완전 종료
+    3. 리니어 모터 동작 중 추가 움직임 방지
+    """
+    if serial_server is None:
+        print("[Sensor Backward] 시리얼 통신이 연결되지 않았습니다.")
+        return False
+    
+    print(f"[Sensor Backward] 마커{alignment_marker_id} 중앙정렬 후진 시작 - '{target_sensor_signal}' 신호 대기")
+    
+    # 화면 중앙 계산
+    frame_center_x = 320  # 640x480 해상도 기준
+    alignment_tolerance = 40  # 중앙 정렬 허용 오차 (픽셀)
+    
+    # 방향별 시리얼 명령
+    direction_commands = {
+        "backward": b"2",     # 후진
+        "left_slide": b"5",   # 좌측 평행이동
+        "right_slide": b"6",  # 우측 평행이동
+        "stop": b"9"          # 정지
+    }
+    
+    last_alignment_time = time.time()
+    alignment_interval = 0.2  # 정렬 명령 간격 (초)
+    
+    # 초기 후진 명령
+    serial_server.write(direction_commands["backward"])
+    print("[Sensor Backward] 후진 시작")
+    
+    while True:
+        # 센서 신호 확인 (비차단 방식)
+        if serial_server.in_waiting:
+            recv = serial_server.read().decode()
+            print(f"[Sensor Backward] 시리얼 수신: '{recv}'")
+            if recv == target_sensor_signal:
+                print(f"[Sensor Backward] 목표 신호 '{target_sensor_signal}' 수신 - 완료!")
+                serial_server.write(direction_commands["stop"])  # 정지
+                time.sleep(0.1)  # 정지 명령 확실히 전달
+                print("[Sensor Backward] 리니어 모터 동작 대기를 위해 함수 완전 종료")
+                return True  # 즉시 함수 종료 - 더 이상 마커 인식하지 않음
+            else:
+                print(f"[Sensor Backward] 예상치 못한 신호: '{recv}' - 계속 진행...")
+        
+        # 카메라 프레임 읽기
+        ret, frame = cap.read()
+        if not ret:
+            print("[Sensor Backward] 카메라 프레임 읽기 실패")
+            continue
+        
+        # 왜곡 보정 적용
+        undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs)
+        gray = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2GRAY)
+        
+        # ArUco 마커 검출
+        corners, ids, _ = cv2.aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
+        
+        # 마커가 검출된 경우
+        if ids is not None and len(ids) > 0:
+            # 중앙정렬 기준 마커 찾기
+            marker_found = False
+            for i, marker_id in enumerate(ids):
+                if marker_id[0] == alignment_marker_id:
+                    marker_found = True
+                    
+                    # 마커 중심점 계산
+                    marker_corners = corners[i][0]
+                    center_x = int(np.mean(marker_corners[:, 0]))
+                    center_y = int(np.mean(marker_corners[:, 1]))
+                    
+                    # 중앙에서의 편차 계산
+                    deviation_x = center_x - frame_center_x
+                    
+                    print(f"[Sensor Backward] 마커{alignment_marker_id} 발견 - 중심: ({center_x}, {center_y}), 편차: {deviation_x}")
+                    
+                    # 중앙 정렬이 필요한 경우 (일정 간격으로만 실행)
+                    current_time = time.time()
+                    if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
+                        if serial_server:
+                            # 후진 시: 마커가 오른쪽에 있으면 좌측 이동 (후진이므로 반대)
+                            if deviation_x > 0:
+                                print(f"[Sensor Backward] 후진-좌측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["left_slide"])
+                            else:
+                                print(f"[Sensor Backward] 후진-우측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["right_slide"])
+                            
+                            time.sleep(0.2)  # 짧은 평행이동
+                            last_alignment_time = current_time
+                    
+                    else:        
+                        # 다시 후진으로 진행
+                        serial_server.write(direction_commands["backward"])
+                    
+                    break
+            
+            # 마커가 없는 경우는 그냥 후진 계속
+            if not marker_found:
+                # 일정 간격으로 후진 명령 재전송
+                current_time = time.time()
+                if current_time - last_alignment_time > alignment_interval:
+                    serial_server.write(direction_commands["backward"])
+                    last_alignment_time = current_time
+        
+        else:
+            # 마커가 전혀 없는 경우도 후진 계속
+            current_time = time.time()
+            if current_time - last_alignment_time > alignment_interval:
+                serial_server.write(direction_commands["backward"])
+                last_alignment_time = current_time
+        
+        # ESC 키로 종료
+        if cv2.waitKey(1) & 0xFF == 27:
+            print("[Sensor Backward] 사용자가 중단했습니다")
+            serial_server.write(direction_commands["stop"])
+            return False
+        
+        # 짧은 딜레이
+        time.sleep(0.05)
+    
+    return False
