@@ -394,7 +394,7 @@ try:
                 # 예시: auto driving 모드처럼 직접 명령 조합
                 print(f"[Client] 목적지: {sector}, {side}, {subzone}, {direction}, {car_number}")
 
-                # 입차 시작: 차량 들어올리기 동작
+                # 입차 시작: 차량 들어올리기 동작 (첫코드 시작부분)
                 print("[Client] 차량 들어올리기 시작...")
                 if serial_server is not None:
                     # 7번 명령 전 버퍼 클리어 (안전장치)
@@ -675,7 +675,7 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진 시작
                 
-                # 먼저 마커 2번을 인식할 때까지 전진 (중앙정렬)
+                # 먼저 마커 2번을 인식할 때까지 전진 (중앙정렬) ----------------탈출하는 부분도 살짝 문제가 있네..? 이걸 어카지
                 driving.flush_camera(cap_back, 5) if cap_back is not None else None
                 driving.flush_camera(cap_front, 5)
                 print("[Client] 마커 2번 인식 중... (마커10 중앙정렬)")
