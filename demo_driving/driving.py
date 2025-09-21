@@ -651,16 +651,16 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                 )
                 target_distance_measured = np.linalg.norm(target_tvecs[0][0])
                 
-                print(f"[Marker10 Alignment] 🎯 목표 마커 {target_marker_id} 발견! 거리: {target_distance_measured:.3f}m")
+                print(f"[Marker10 Alignment] 목표 마커 {target_marker_id} 발견! 거리: {target_distance_measured:.3f}m")
                 
                 # 목표 거리에 도달했으면 완료
                 if target_distance_measured <= target_distance:
-                    print(f"[Marker10 Alignment] ✅ 목표 거리 도달! 완료")
+                    print(f"[Marker10 Alignment] 목표 거리 도달! 완료")
                     if serial_server:
                         serial_server.write(direction_commands["stop"])
                     return True
             else:
-                print(f"[Marker10 Alignment] ⚠️ 목표 마커 {target_marker_id} 미발견 (검출된 마커: {detected_markers})")
+                print(f"[Marker10 Alignment] 목표 마커 {target_marker_id} 미발견 (검출된 마커: {detected_markers})")
             
             # 10번 마커 중앙 정렬 처리
             if 10 in ids:
@@ -674,12 +674,12 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                 # 중앙에서의 편차 계산
                 deviation_x = center_x - frame_center_x
                 
-                print(f"[Marker10 Alignment] 📍 10번 마커 발견 - 중심: ({center_x}, {center_y}), 편차: {deviation_x}")
+                print(f"[Marker10 Alignment] 10번 마커 발견 - 중심: ({center_x}, {center_y}), 편차: {deviation_x}")
                 
                 # 중앙 정렬이 필요한 경우 (일정 간격으로만 실행)
                 current_time = time.time()
                 if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
-                    print(f"[Marker10 Alignment] 🔧 중앙보정 필요! 편차: {deviation_x} (허용값: {alignment_tolerance})")
+                    print(f"[Marker10 Alignment] 중앙보정 필요! 편차: {deviation_x} (허용값: {alignment_tolerance})")
                     if serial_server:
                         # 현재 진행 방향 정지
                         # serial_server.write(direction_commands["stop"])
@@ -731,15 +731,15 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                         serial_server.write(direction_commands[direction])
                         last_alignment_time = current_time
                 else:
-                    print(f"[Marker10 Alignment] ✅ 10번 마커 중앙정렬 OK (편차: {deviation_x}, 허용값: {alignment_tolerance})")
+                    print(f"[Marker10 Alignment] 10번 마커 중앙정렬 OK (편차: {deviation_x}, 허용값: {alignment_tolerance})")
             
             # 10번 마커가 없는 경우
             else:
-                print(f"[Marker10 Alignment] ❌ 10번 마커 미발견 (검출된 마커: {detected_markers})")
+                print(f"[Marker10 Alignment] 10번 마커 미발견 (검출된 마커: {detected_markers})")
         
         # 마커가 전혀 없는 경우
         else:
-            print("[Marker10 Alignment] ❌ 마커 검출 실패 - 화면에 마커가 없음")
+            print("[Marker10 Alignment] 마커 검출 실패 - 화면에 마커가 없음")
         
         #시험삼아 수정
         
