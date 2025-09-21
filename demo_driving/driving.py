@@ -890,8 +890,8 @@ def command7_backward_with_sensor_control(cap, marker_dict, param_markers,
             if recv == 'l':
                 print("[Command7 Backward] 적외선 센서 감지! 'l' 신호 수신")
                 print("[Command7 Backward] 즉시 정지 후 'a' 신호 대기 모드로 전환")
-                serial_server.write(direction_commands["stop"])  # 즉시 정지
-                time.sleep(0.1)  # 정지 명령 확실히 전달
+                #serial_server.write(direction_commands["stop"])  # 즉시 정지
+                #time.sleep(0.1)  # 정지 명령 확실히 전달
                 break  # Phase 2로 이동
             else:
                 print(f"[Command7 Backward] 예상치 못한 신호: '{recv}' - 계속 진행...")
