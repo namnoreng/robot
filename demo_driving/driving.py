@@ -997,6 +997,11 @@ def command7_backward_with_sensor_control(cap, marker_dict, param_markers,
                                 
                                 time.sleep(0.1)  # 프레임 처리 딜레이
                             
+                            # 평행이동 완료 후 즉시 정지
+                            print(f"[Command7 Backward] 평행이동 완료 - 정지 명령 전송")
+                            serial_server.write(direction_commands["stop"])
+                            time.sleep(0.2)  # 정지 확실히 하기
+                            
                             last_alignment_time = current_time
                     
                     else:        
