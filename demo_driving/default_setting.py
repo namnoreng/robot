@@ -64,6 +64,7 @@ mode_state = {"default" : 0,
               "auto_driving" : 5,
               "reset_position" : 6,
               "marker10_alignment" : 7,
+              "opposite_camera_test" : 8,
               "stop": "stop"}  # 모드 종류 설정
 
 mode = mode_state["default"]  # 초기 모드 설정
@@ -168,7 +169,7 @@ return_message = b's'
 
 while True:
     mode = int(input("모드 선택 (0: 기본, 1: 빈 공간 찾기, 2: 차량 찾기, 3: 아르코 마커 인식 하기\n" \
-    "4: 아르코마 마커 거리 인식하기, 5: 목표 설정 및 주행 해보기, 6: 위치 초기화, 7: 10번 마커 중앙정렬 주행): "))
+    "4: 아르코마 마커 거리 인식하기, 5: 목표 설정 및 주행 해보기, 6: 위치 초기화, 7: 10번 마커 중앙정렬 주행, 8: 반대 카메라 테스트): "))
     if mode not in mode_state.values():
         print("잘못된 모드입니다. 다시 선택하세요.")
         continue
@@ -515,6 +516,67 @@ while True:
             print("✅ 목표 마커에 성공적으로 도달했습니다!")
         else:
             print("❌ 주행이 중단되었습니다.")
+        
+        # 안전을 위해 정지
+        serial_server.write(b"9")
+        print("🛑 로봇 정지")
+
+    elif mode == mode_state["opposite_camera_test"]:
+        print("=== 반대 카메라 테스트 모드 ===")
+        print("진행방향과 반대되는 카메라를 사용하여 중앙정렬 주행을 테스트합니다.")
+        
+        try:
+            target_marker = int(input("목표 마커 ID를 입력하세요 (1-19): "))
+            if target_marker < 1 or target_marker > 19:
+                print("❌ 잘못된 마커 ID입니다. 1-19 사이의 값을 입력하세요.")
+                continue
+        except ValueError:
+            print("❌ 숫자를 입력하세요.")
+            continue
+        
+        try:
+            target_distance = float(input("목표 거리를 입력하세요 (m, 예: 0.15): "))
+            if target_distance <= 0:
+                print("❌ 거리는 0보다 큰 값이어야 합니다.")
+                continue
+        except ValueError:
+            print("❌ 올바른 숫자를 입력하세요.")
+            continue
+        
+        direction_input = input("이동 방향을 선택하세요 (f: 직진, b: 후진): ").lower()
+        if direction_input == 'f':
+            direction = "forward"
+            print("📸 직진 + 후방 카메라 모드 (반대 카메라)")
+        elif direction_input == 'b':
+            direction = "backward"
+            print("📸 후진 + 전방 카메라 모드 (반대 카메라)")
+        else:
+            print("❌ 잘못된 입력입니다. 'f' 또는 'b'를 입력하세요.")
+            continue
+        
+        print(f"🎯 목표: 마커 {target_marker}, 거리 {target_distance}m, 방향 {direction}")
+        print("🚀 3초 후 시작합니다... (ESC 키로 중단 가능)")
+        time.sleep(3)
+        
+        # 반대 카메라 테스트 실행
+        success = driving.driving_with_marker10_alignment(
+            cap_front, cap_back, marker_dict, param_markers, 
+            target_marker_id=target_marker,
+            camera_front_matrix=camera_front_matrix, 
+            dist_front_coeffs=dist_front_coeffs,
+            camera_back_matrix=camera_back_matrix,
+            dist_back_coeffs=dist_back_coeffs,
+            target_distance=target_distance,
+            serial_server=serial_server,
+            direction=direction,
+            opposite_camera=True  # 반대 카메라 사용
+        )
+        
+        # 결과 출력
+        if success:
+            print("✅ 반대 카메라 테스트 성공! 목표 마커에 도달했습니다!")
+        else:
+            print("❌ 반대 카메라 테스트가 중단되었습니다.")
         
         # 안전을 위해 정지
         serial_server.write(b"9")

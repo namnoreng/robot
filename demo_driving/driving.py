@@ -519,7 +519,7 @@ def escape_from_parking(cap, aruco_dict, parameters, marker_index, camera_matrix
 def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, target_marker_id, 
                                    camera_front_matrix, dist_front_coeffs,
                                    camera_back_matrix, dist_back_coeffs, target_distance=0.15, 
-                                   serial_server=None, direction="forward"):
+                                   serial_server=None, direction="forward", opposite_camera=False):
     """
     10번 마커를 기준으로 중앙 정렬하면서 특정 마커를 찾을 때까지 직진/후진하는 함수
     
@@ -536,34 +536,59 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     - target_distance: 목표 거리 (m)
     - serial_server: 시리얼 통신 객체
     - direction: 이동 방향 ("forward" 또는 "backward")
+    - opposite_camera: True면 진행방향과 반대 카메라 사용 (예: 전방카메라로 후진)
     
     Returns:
     - bool: 목표 마커 발견 시 True, 실패 시 False
     """
     
     print(f"[Marker10 Alignment] 시작 - 목표 마커: {target_marker_id}, 방향: {direction}")
+    print(f"[Marker10 Alignment] 반대 카메라 사용: {opposite_camera}")
     print("[Marker10 Alignment] 10번 마커로 중앙 정렬하면서 진행합니다.")
     
-    # 방향에 따라 사용할 카메라와 매트릭스 선택
-    if direction == "forward":
-        cap = cap_front
-        camera_matrix = camera_front_matrix
-        dist_coeffs = dist_front_coeffs
-        print("[Marker10 Alignment] 전방 카메라 사용")
-    elif direction == "backward":
-        if cap_back is not None and camera_back_matrix is not None and dist_back_coeffs is not None:
-            cap = cap_back
-            camera_matrix = camera_back_matrix
-            dist_coeffs = dist_back_coeffs
-            print("[Marker10 Alignment] 후방 카메라 사용")
-        else:
-            print("[Marker10 Alignment] 후방 카메라가 없어 전방 카메라로 대체")
+    # 방향에 따라 사용할 카메라와 매트릭스 선택 (opposite_camera 옵션 고려)
+    if opposite_camera:
+        # 반대 카메라 사용: 직진시 후방카메라, 후진시 전방카메라
+        if direction == "forward":
+            if cap_back is not None and camera_back_matrix is not None and dist_back_coeffs is not None:
+                cap = cap_back
+                camera_matrix = camera_back_matrix
+                dist_coeffs = dist_back_coeffs
+                print("[Marker10 Alignment] 직진 + 후방 카메라 사용 (반대 카메라 모드)")
+            else:
+                print("[Marker10 Alignment] 후방 카메라가 없어 전방 카메라로 대체")
+                cap = cap_front
+                camera_matrix = camera_front_matrix
+                dist_coeffs = dist_front_coeffs
+        elif direction == "backward":
             cap = cap_front
             camera_matrix = camera_front_matrix
             dist_coeffs = dist_front_coeffs
+            print("[Marker10 Alignment] 후진 + 전방 카메라 사용 (반대 카메라 모드)")
+        else:
+            print(f"[Marker10 Alignment] 잘못된 방향: {direction}")
+            return False
     else:
-        print(f"[Marker10 Alignment] 잘못된 방향: {direction}")
-        return False
+        # 기본 모드: 직진시 전방카메라, 후진시 후방카메라
+        if direction == "forward":
+            cap = cap_front
+            camera_matrix = camera_front_matrix
+            dist_coeffs = dist_front_coeffs
+            print("[Marker10 Alignment] 직진 + 전방 카메라 사용")
+        elif direction == "backward":
+            if cap_back is not None and camera_back_matrix is not None and dist_back_coeffs is not None:
+                cap = cap_back
+                camera_matrix = camera_back_matrix
+                dist_coeffs = dist_back_coeffs
+                print("[Marker10 Alignment] 후진 + 후방 카메라 사용")
+            else:
+                print("[Marker10 Alignment] 후방 카메라가 없어 전방 카메라로 대체")
+                cap = cap_front
+                camera_matrix = camera_front_matrix
+                dist_coeffs = dist_front_coeffs
+        else:
+            print(f"[Marker10 Alignment] 잘못된 방향: {direction}")
+            return False
     
     if cap is None or not cap.isOpened():
         print("[Marker10 Alignment] 카메라가 연결되지 않았습니다.")
@@ -643,23 +668,41 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                         # serial_server.write(direction_commands["stop"])
                         # time.sleep(0.1)
                         
-                        # 진행 방향에 따른 평행이동 방향 결정
+                        # 진행 방향과 카메라 설정에 따른 평행이동 방향 결정
                         if direction == "forward":
-                            # 직진 시: 마커가 오른쪽에 있으면 우측 이동
-                            if deviation_x > 0:
-                                print(f"[Marker10 Alignment] 직진-우측 평행이동 (편차: {deviation_x})")
-                                serial_server.write(direction_commands["right_slide"])
+                            if opposite_camera:
+                                # 직진 + 후방카메라: 화면이 반대로 보임
+                                if deviation_x > 0:
+                                    print(f"[Marker10 Alignment] 직진(후방카메라)-좌측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["left_slide"])
+                                else:
+                                    print(f"[Marker10 Alignment] 직진(후방카메라)-우측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["right_slide"])
                             else:
-                                print(f"[Marker10 Alignment] 직진-좌측 평행이동 (편차: {deviation_x})")
-                                serial_server.write(direction_commands["left_slide"])
+                                # 직진 + 전방카메라: 일반적인 방향
+                                if deviation_x > 0:
+                                    print(f"[Marker10 Alignment] 직진-우측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["right_slide"])
+                                else:
+                                    print(f"[Marker10 Alignment] 직진-좌측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["left_slide"])
                         elif direction == "backward":
-                            # 후진 시: 마커가 오른쪽에 있으면 좌측 이동 (후진이므로 반대)
-                            if deviation_x > 0:
-                                print(f"[Marker10 Alignment] 후진-좌측 평행이동 (편차: {deviation_x})")
-                                serial_server.write(direction_commands["left_slide"])
+                            if opposite_camera:
+                                # 후진 + 전방카메라: 일반적인 방향 (화면 기준)
+                                if deviation_x > 0:
+                                    print(f"[Marker10 Alignment] 후진(전방카메라)-우측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["right_slide"])
+                                else:
+                                    print(f"[Marker10 Alignment] 후진(전방카메라)-좌측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["left_slide"])
                             else:
-                                print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
-                                serial_server.write(direction_commands["right_slide"])
+                                # 후진 + 후방카메라: 후진이므로 반대
+                                if deviation_x > 0:
+                                    print(f"[Marker10 Alignment] 후진-좌측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["left_slide"])
+                                else:
+                                    print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
+                                    serial_server.write(direction_commands["right_slide"])
                         
                         time.sleep(0.2)  # 짧은 평행이동
                         
