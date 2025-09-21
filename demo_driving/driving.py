@@ -721,7 +721,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                                     print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
                                     serial_server.write(direction_commands["right_slide"])
                         
-                        time.sleep(0.2)  # 짧은 평행이동
+                        time.sleep(0.5)  # 짧은 평행이동
                         
                         # 평행이동 후 정지
                         # serial_server.write(direction_commands["stop"])
