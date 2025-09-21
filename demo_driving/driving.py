@@ -830,6 +830,169 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     
     return False
 
+def command7_backward_with_sensor_control(cap, marker_dict, param_markers, 
+                                        camera_matrix, dist_coeffs, serial_server,
+                                        alignment_marker_id=10):
+    """
+    7번 명령을 사용한 적외선 센서 기반 후진 제어
+    
+    동작 순서:
+    1. 7번 명령으로 후진하면서 마커 기준 중앙정렬 수행
+    2. 적외선 센서가 차량 바퀴 인식 시 'l' 신호 수신
+    3. 'l' 신호 수신 시 즉시 정지하고 'a' 신호 대기
+    4. 'a' 신호 수신 시 7번 내부 루틴 완료로 함수 종료
+    
+    Args:
+    - cap: 카메라 객체
+    - marker_dict: ArUco 마커 딕셔너리
+    - param_markers: ArUco 검출 파라미터
+    - camera_matrix, dist_coeffs: 카메라 캘리브레이션 파라미터
+    - serial_server: 시리얼 통신 객체
+    - alignment_marker_id: 중앙정렬 기준 마커 ID (기본 10)
+    
+    Returns:
+    - True: 성공적으로 7번 루틴 완료
+    - False: 실패 또는 중단
+    """
+    if serial_server is None:
+        print("[Command7 Backward] 시리얼 통신이 연결되지 않았습니다.")
+        return False
+    
+    print(f"[Command7 Backward] 7번 명령 후진 시작 - 마커{alignment_marker_id} 중앙정렬")
+    print("[Command7 Backward] 적외선 센서 'l' 신호 → 정지 → 'a' 신호 대기")
+    
+    # 화면 중앙 계산
+    frame_center_x = 320  # 640x480 해상도 기준
+    alignment_tolerance = 40  # 중앙 정렬 허용 오차 (픽셀)
+    
+    # 방향별 시리얼 명령
+    direction_commands = {
+        "command_7": b"7",    # 7번 명령 (후진 대체)
+        "left_slide": b"5",   # 좌측 평행이동
+        "right_slide": b"6",  # 우측 평행이동
+        "stop": b"9"          # 정지
+    }
+    
+    last_alignment_time = time.time()
+    alignment_interval = 0.2  # 정렬 명령 간격 (초)
+    
+    # 초기 7번 명령 전송
+    serial_server.write(direction_commands["command_7"])
+    print("[Command7 Backward] 7번 명령 전송 - 후진 시작")
+    
+    # Phase 1: 7번 후진하면서 마커 중앙정렬, 'l' 신호 대기
+    print("[Command7 Backward] === Phase 1: 후진 + 중앙정렬 + 'l' 신호 대기 ===")
+    while True:
+        # 적외선 센서 신호 확인 (비차단 방식)
+        if serial_server.in_waiting:
+            recv = serial_server.read().decode()
+            print(f"[Command7 Backward] 시리얼 수신: '{recv}'")
+            if recv == 'l':
+                print("[Command7 Backward] 적외선 센서 감지! 'l' 신호 수신")
+                print("[Command7 Backward] 즉시 정지 후 'a' 신호 대기 모드로 전환")
+                serial_server.write(direction_commands["stop"])  # 즉시 정지
+                time.sleep(0.1)  # 정지 명령 확실히 전달
+                break  # Phase 2로 이동
+            else:
+                print(f"[Command7 Backward] 예상치 못한 신호: '{recv}' - 계속 진행...")
+        
+        # 카메라 프레임 읽기
+        ret, frame = cap.read()
+        if not ret:
+            print("[Command7 Backward] 카메라 프레임 읽기 실패")
+            continue
+        
+        # 왜곡 보정 적용
+        undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs)
+        gray = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2GRAY)
+        
+        # ArUco 마커 검출
+        corners, ids, _ = cv2.aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
+        
+        # 마커가 검출된 경우 중앙정렬 처리
+        if ids is not None and len(ids) > 0:
+            marker_found = False
+            for i, marker_id in enumerate(ids):
+                if marker_id[0] == alignment_marker_id:
+                    marker_found = True
+                    
+                    # 마커 중심점 계산
+                    marker_corners = corners[i][0]
+                    center_x = int(np.mean(marker_corners[:, 0]))
+                    center_y = int(np.mean(marker_corners[:, 1]))
+                    
+                    # 중앙에서의 편차 계산
+                    deviation_x = center_x - frame_center_x
+                    
+                    print(f"[Command7 Backward] 마커{alignment_marker_id} 발견 - 중심: ({center_x}, {center_y}), 편차: {deviation_x}")
+                    
+                    # 중앙 정렬이 필요한 경우 (일정 간격으로만 실행)
+                    current_time = time.time()
+                    if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
+                        if serial_server:
+                            # 7번 후진 시: 마커가 오른쪽에 있으면 좌측 이동 (후진이므로 반대)
+                            if deviation_x > 0:
+                                print(f"[Command7 Backward] 7번 후진-좌측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["left_slide"])
+                            else:
+                                print(f"[Command7 Backward] 7번 후진-우측 평행이동 (편차: {deviation_x})")
+                                serial_server.write(direction_commands["right_slide"])
+                            
+                            time.sleep(0.2)  # 짧은 평행이동
+                            last_alignment_time = current_time
+                    
+                    else:        
+                        # 다시 7번 명령으로 진행
+                        serial_server.write(direction_commands["command_7"])
+                    
+                    break
+            
+            # 마커가 없는 경우는 그냥 7번 명령 계속
+            if not marker_found:
+                current_time = time.time()
+                if current_time - last_alignment_time > alignment_interval:
+                    serial_server.write(direction_commands["command_7"])
+                    last_alignment_time = current_time
+        
+        else:
+            # 마커가 전혀 없는 경우도 7번 명령 계속
+            current_time = time.time()
+            if current_time - last_alignment_time > alignment_interval:
+                serial_server.write(direction_commands["command_7"])
+                last_alignment_time = current_time
+        
+        # ESC 키로 종료
+        if cv2.waitKey(1) & 0xFF == 27:
+            print("[Command7 Backward] 사용자가 중단했습니다")
+            serial_server.write(direction_commands["stop"])
+            return False
+        
+        # 짧은 딜레이
+        time.sleep(0.05)
+    
+    # Phase 2: 'a' 신호 대기 (7번 내부 루틴 완료 대기)
+    print("[Command7 Backward] === Phase 2: 'a' 신호 대기 (7번 루틴 완료) ===")
+    while True:
+        if serial_server.in_waiting:
+            recv = serial_server.read().decode()
+            print(f"[Command7 Backward] 시리얼 수신: '{recv}'")
+            if recv == 'a':
+                print("[Command7 Backward] 'a' 신호 수신 - 7번 내부 루틴 완료!")
+                print("[Command7 Backward] 7번 명령 기반 후진 제어 성공적으로 완료")
+                return True  # 성공 완료
+            else:
+                print(f"[Command7 Backward] 예상치 못한 신호: '{recv}' - 'a' 신호 계속 대기...")
+        
+        # ESC 키로 종료
+        if cv2.waitKey(1) & 0xFF == 27:
+            print("[Command7 Backward] 사용자가 중단했습니다")
+            return False
+        
+        # 짧은 딜레이 (CPU 부하 방지)
+        time.sleep(0.1)
+    
+    return False
+
 def sensor_based_backward_with_alignment(cap, marker_dict, param_markers, 
                                        camera_matrix, dist_coeffs, serial_server,
                                        target_sensor_signal='a', alignment_marker_id=10):
