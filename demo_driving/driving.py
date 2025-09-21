@@ -1050,8 +1050,6 @@ def sensor_based_backward_with_alignment(cap, marker_dict, param_markers,
             print(f"[Sensor Backward] 시리얼 수신: '{recv}'")
             if recv == target_sensor_signal:
                 print(f"[Sensor Backward] 목표 신호 '{target_sensor_signal}' 수신 - 완료!")
-                serial_server.write(direction_commands["stop"])  # 정지
-                time.sleep(0.1)  # 정지 명령 확실히 전달
                 print("[Sensor Backward] 리니어 모터 동작 대기를 위해 함수 완전 종료")
                 return True  # 즉시 함수 종료 - 더 이상 마커 인식하지 않음
             else:
