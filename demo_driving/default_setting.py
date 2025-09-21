@@ -89,6 +89,48 @@ if serial_port:
         print(f"Serial communication error: {e}")
         serial_server = None
 
+# 전역 카메라 매트릭스 및 왜곡 계수 변수
+camera_front_matrix = None
+dist_front_coeffs = None
+camera_back_matrix = None
+dist_back_coeffs = None
+
+def load_camera_calibration():
+    """카메라 캘리브레이션 파일을 로드하는 함수"""
+    global camera_front_matrix, dist_front_coeffs, camera_back_matrix, dist_back_coeffs
+    
+    print("=== 카메라 캘리브레이션 파일 로드 ===")
+    
+    # 전방 카메라 캘리브레이션 로드
+    try:
+        camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
+        dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
+        print("✅ 전방 카메라 캘리브레이션 로드 완료")
+    except FileNotFoundError:
+        print("⚠️ 전방 카메라 캘리브레이션 파일을 찾을 수 없습니다.")
+        camera_front_matrix = None
+        dist_front_coeffs = None
+    
+    # 후방 카메라 캘리브레이션 로드
+    try:
+        camera_back_matrix = np.load(r"camera_test/calibration_result/camera_back_matrix.npy")
+        dist_back_coeffs = np.load(r"camera_test/calibration_result/dist_back_coeffs.npy")
+        print("✅ 후방 카메라 캘리브레이션 로드 완료")
+    except FileNotFoundError:
+        print("⚠️ 후방 카메라 캘리브레이션 파일을 찾을 수 없습니다.")
+        camera_back_matrix = None
+        dist_back_coeffs = None
+    
+    # 로드 결과 요약
+    front_status = "OK" if camera_front_matrix is not None else "Missing"
+    back_status = "OK" if camera_back_matrix is not None else "Missing"
+    print(f"📊 캘리브레이션 상태: 전방={front_status}, 후방={back_status}")
+    
+    return camera_front_matrix is not None or camera_back_matrix is not None
+
+# 프로그램 시작 시 캘리브레이션 파일 로드
+calibration_loaded = load_camera_calibration()
+
 # # TCP/IP 소켓 통신 초기화
 # try:
 #     tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -124,10 +166,12 @@ print("ArUco 설정 완료 (레거시 DetectorParameters_create() 사용)")
 # 카메라 초기화 (CSI 카메라 지원)
 print("=== 카메라 초기화 시작 ===")
 
+cap_front = None
+cap_back = None
+
 if current_platform == 'Windows':
-    print("❌ Windows 환경에서는 CSI 카메라를 지원하지 않습니다.")
-    print("   Jetson Nano 환경에서만 실행 가능합니다.")
-    exit(1)
+    print("⚠️ Windows 환경에서는 CSI 카메라를 지원하지 않습니다.")
+    print("   캘리브레이션 데이터만 로드하고, 카메라 없이 일부 기능만 사용 가능합니다.")
 elif current_platform == 'Linux':
     print("Jetson 환경 - CSI 카메라 사용")
     
@@ -163,7 +207,14 @@ elif current_platform == 'Linux':
         print("⚠️ CSI back camera 연결 실패 - 전면 카메라만 사용")
         cap_back = None
 
-print("카메라 초기화 완료")
+# 시스템 상태 요약
+print("\n=== 시스템 상태 요약 ===")
+print(f"📷 전방 카메라: {'연결됨' if cap_front else '연결 안됨'}")
+print(f"📷 후방 카메라: {'연결됨' if cap_back else '연결 안됨'}")
+print(f"📊 전방 캘리브레이션: {'로드됨' if camera_front_matrix is not None else '없음'}")
+print(f"📊 후방 캘리브레이션: {'로드됨' if camera_back_matrix is not None else '없음'}")
+print(f"🔌 시리얼 통신: {'연결됨' if serial_server else '연결 안됨'}")
+print("=== 초기화 완료 ===\n")
 
 return_message = b's'
 
@@ -178,15 +229,11 @@ while True:
         print("카메라 창에서 ArUco 마커를 실시간으로 확인하면서 조종하세요.")
         print("키보드 입력: 'q'로 종료, 다른 키는 시리얼로 전송됩니다.")
         
-        # 카메라 매트릭스 로드 - CSI 카메라용 캘리브레이션
-        try:
-            camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
-            dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
-            print("✅ 카메라 캘리브레이션 파일 로드 완료 - 왜곡 보정 적용")
-        except FileNotFoundError:
-            print("⚠️ 캘리브레이션 파일을 찾을 수 없습니다. 왜곡 보정 없이 진행합니다.")
-            camera_front_matrix = None
-            dist_front_coeffs = None
+        # 전역 캘리브레이션 변수 사용
+        if camera_front_matrix is not None and dist_front_coeffs is not None:
+            print("✅ 전역 캘리브레이션 사용 - 왜곡 보정 적용")
+        else:
+            print("⚠️ 캘리브레이션이 없습니다. 왜곡 보정 없이 진행합니다.")
         
         # 카메라 화면과 ArUco 마커 인식을 실시간으로 표시
         while True:
@@ -279,20 +326,19 @@ while True:
         # 거리 측정 모드
         marker_id = int(input("측정할 마커 ID를 입력하세요: "))
         
-        # 카메라 매트릭스 로드 - CSI 카메라용 캘리브레이션
-        try:
-            camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
-            dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
-            camera_back_matrix = np.load(r"camera_test/calibration_result/camera_back_matrix.npy")
-            dist_back_coeffs = np.load(r"camera_test/calibration_result/dist_back_coeffs.npy")
-            marker_length = 0.05  # 마커 크기 (미터)
+        # 전역 캘리브레이션 변수 사용
+        if camera_front_matrix is None or dist_front_coeffs is None:
+            print("❌ 전방 카메라 캘리브레이션이 없어 거리 측정을 할 수 없습니다.")
+            continue
             
-            print(f"마커 ID {marker_id}와의 거리 측정 중... (ESC로 종료)")
-            
-            while True:
-                ret, frame = cap_front.read()
-                if not ret:
-                    break
+        marker_length = 0.05  # 마커 크기 (미터)
+        
+        print(f"마커 ID {marker_id}와의 거리 측정 중... (ESC로 종료)")
+        
+        while True:
+            ret, frame = cap_front.read()
+            if not ret:
+                break
                 
                 # csi_5x5_aruco 방식: 화면 표시용 프레임에도 왜곡 보정 적용
                 frame_display = cv.undistort(frame, camera_front_matrix, dist_front_coeffs)
@@ -330,14 +376,11 @@ while True:
                 
                 cv.imshow("Distance Measurement", frame_display)
                 
-                key = cv.waitKey(1) & 0xFF
-                if key == 27:  # ESC
-                    break
-            
-            cv.destroyAllWindows()
-                
-        except Exception as e:
-            print(f"오류 발생: {e}")
+            key = cv.waitKey(1) & 0xFF
+            if key == 27:  # ESC
+                break
+        
+        cv.destroyAllWindows()
 
     elif mode == mode_state["auto_driving"]:
         print("코드 들어가는거 확인")
@@ -347,11 +390,12 @@ while True:
             print("❌ 전면 카메라가 없어 자율주행을 할 수 없습니다.")
             continue
             
+        # 전역 캘리브레이션 확인
+        if camera_front_matrix is None or dist_front_coeffs is None:
+            print("❌ 전방 카메라 캘리브레이션이 없어 자율주행을 할 수 없습니다.")
+            continue
+            
         car_number = input("주차할 차량 번호를 입력하세요: ")
-        
-        # 카메라 매트릭스 로드
-        camera_front_matrix = np.load(r"camera_value/camera_front_matrix.npy")
-        dist_front_coeffs = np.load(r"camera_value/dist_front_coeffs.npy")
         
         first_marker, turning_1, secondmarker, turning_2 = find_destination.DFS(find_destination.parking_lot)
         
@@ -463,25 +507,15 @@ while True:
             print("❌ 잘못된 입력입니다. 숫자를 입력해주세요.")
             continue
         
-        # 카메라 매트릭스 로드
-        try:
-            camera_front_matrix = np.load(r"camera_test/calibration_result/camera_front_matrix.npy")
-            dist_front_coeffs = np.load(r"camera_test/calibration_result/dist_front_coeffs.npy")
-            print("✅ 전방 카메라 캘리브레이션 파일 로드 완료")
-            
-            # 후방 카메라 캘리브레이션 파일 로드 (있는 경우)
-            try:
-                camera_back_matrix = np.load(r"camera_test/calibration_result/camera_back_matrix.npy")
-                dist_back_coeffs = np.load(r"camera_test/calibration_result/dist_back_coeffs.npy")
-                print("✅ 후방 카메라 캘리브레이션 파일 로드 완료")
-            except FileNotFoundError:
-                print("⚠️ 후방 카메라 캘리브레이션 파일 없음 - 전방 카메라만 사용")
-                camera_back_matrix = None
-                dist_back_coeffs = None
-                
-        except FileNotFoundError:
-            print("❌ 전방 카메라 캘리브레이션 파일을 찾을 수 없습니다.")
+        # 전역 캘리브레이션 변수 확인
+        if camera_front_matrix is None or dist_front_coeffs is None:
+            print("❌ 전방 카메라 캘리브레이션이 없어 주행을 할 수 없습니다.")
             continue
+            
+        if camera_back_matrix is None or dist_back_coeffs is None:
+            print("⚠️ 후방 카메라 캘리브레이션이 없습니다 - 전방 카메라만 사용")
+        else:
+            print("✅ 전방/후방 카메라 캘리브레이션 모두 사용 가능")
         
         print(f"📍 설정 정보:")
         print(f"  - 목표 마커: {target_marker}번")
