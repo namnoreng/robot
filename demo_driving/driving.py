@@ -931,13 +931,17 @@ def command7_backward_with_sensor_control(cap, marker_dict, param_markers,
                     if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
                         print(f"[Command7 Backward] 중앙보정 필요! 편차: {deviation_x} (허용값: {alignment_tolerance})")
                         if serial_server:
-                            # 7번 후진 시: 마커가 오른쪽에 있으면 좌측 이동 (후진이므로 반대)
+                            # 현재 진행 방향 정지 (driving_with_marker10_alignment와 동일)
+                            serial_server.write(direction_commands["stop"])
+                            time.sleep(0.1)
+                            
+                            # 평행이동 방향 결정 (후진 + 후방카메라 기준)
                             slide_direction = None
                             if deviation_x > 0:
-                                print(f"[Command7 Backward] 7번 후진-좌측 평행이동 시작 (편차: {deviation_x})")
+                                print(f"[Command7 Backward] 후진-좌측 평행이동 시작 (편차: {deviation_x})")
                                 slide_direction = "left_slide"
                             else:
-                                print(f"[Command7 Backward] 7번 후진-우측 평행이동 시작 (편차: {deviation_x})")
+                                print(f"[Command7 Backward] 후진-우측 평행이동 시작 (편차: {deviation_x})")
                                 slide_direction = "right_slide"
                             
                             # 평행이동 명령 시작
@@ -968,7 +972,7 @@ def command7_backward_with_sensor_control(cap, marker_dict, param_markers,
                                         marker_corners_slide = corners_slide[marker_idx_slide]
                                         
                                         # 마커 중심점 재계산
-                                        center_x_slide = int(np.mean(marker_corners_slide[0][:, 0]))
+                                        center_x_slide = int(marker_corners_slide[0][:, 0].mean())
                                         deviation_x_slide = center_x_slide - frame_center_x
                                         
                                         print(f"[Command7 Backward] 평행이동 중 - 편차: {deviation_x_slide}")
