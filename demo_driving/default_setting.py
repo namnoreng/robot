@@ -517,12 +517,12 @@ while True:
         else:
             print("✅ 전방/후방 카메라 캘리브레이션 모두 사용 가능")
         
-        print(f"📍 설정 정보:")
+        print(f"설정 정보:")
         print(f"  - 목표 마커: {target_marker}번")
         print(f"  - 목표 거리: {target_distance}m")
         print(f"  - 이동 방향: {direction}")
         print(f"  - 정렬 기준: 10번 마커")
-        print("🚀 주행 시작! (ESC 키로 중단 가능)")
+        print("주행 시작! (ESC 키로 중단 가능)")
         
         # 진행 방향에 따른 초기 이동 명령
         if direction == "forward":
@@ -547,13 +547,13 @@ while True:
         
         # 결과 출력
         if success:
-            print("✅ 목표 마커에 성공적으로 도달했습니다!")
+            print("목표 마커에 성공적으로 도달했습니다!")
         else:
-            print("❌ 주행이 중단되었습니다.")
+            print("주행이 중단되었습니다.")
         
         # 안전을 위해 정지
         serial_server.write(b"9")
-        print("🛑 로봇 정지")
+        print("로봇 정지")
 
     elif mode == mode_state["opposite_camera_test"]:
         print("=== 반대 카메라 테스트 모드 ===")
@@ -580,23 +580,33 @@ while True:
         direction_input = input("이동 방향을 선택하세요 (f: 직진, b: 후진): ").lower()
         if direction_input == 'f':
             direction = "forward"
-            print("📸 직진 + 후방 카메라 모드 (반대 카메라)")
+            print("직진 + 후방 카메라 모드 (반대 카메라)")
         elif direction_input == 'b':
             direction = "backward"
-            print("📸 후진 + 전방 카메라 모드 (반대 카메라)")
+            print("후진 + 전방 카메라 모드 (반대 카메라)")
         else:
-            print("❌ 잘못된 입력입니다. 'f' 또는 'b'를 입력하세요.")
+            print("잘못된 입력입니다. 'f' 또는 'b'를 입력하세요.")
             continue
         
-        print(f"🎯 목표: 마커 {target_marker}, 거리 {target_distance}m, 방향 {direction}")
-        print("🚀 3초 후 시작합니다... (ESC 키로 중단 가능)")
+        print(f"목표: 마커 {target_marker}, 거리 {target_distance}m, 방향 {direction}")
+        print("3초 후 시작합니다... (ESC 키로 중단 가능)")
         time.sleep(3)
+        
+        # 초기 동작 명령 전송
+        if serial_server:
+            if direction == "forward":
+                print("[반대 카메라 테스트] 직진 명령 전송")
+                serial_server.write(b"1")  # 직진
+            elif direction == "backward":
+                print("[반대 카메라 테스트] 후진 명령 전송")
+                serial_server.write(b"2")  # 후진
+            time.sleep(0.5)  # 초기 동작 시작 대기
         
         # 반대 카메라 테스트 실행
         success = driving.driving_with_marker10_alignment(
-            cap_front, cap_back, marker_dict, param_markers, 
+            cap_front, cap_back, marker_dict, param_markers,
             target_marker_id=target_marker,
-            camera_front_matrix=camera_front_matrix, 
+            camera_front_matrix=camera_front_matrix,
             dist_front_coeffs=dist_front_coeffs,
             camera_back_matrix=camera_back_matrix,
             dist_back_coeffs=dist_back_coeffs,
@@ -608,13 +618,13 @@ while True:
         
         # 결과 출력
         if success:
-            print("✅ 반대 카메라 테스트 성공! 목표 마커에 도달했습니다!")
+            print("반대 카메라 테스트 성공! 목표 마커에 도달했습니다!")
         else:
-            print("❌ 반대 카메라 테스트가 중단되었습니다.")
+            print("반대 카메라 테스트가 중단되었습니다.")
         
         # 안전을 위해 정지
         serial_server.write(b"9")
-        print("🛑 로봇 정지")
+        print("로봇 정지")
 
     elif mode == mode_state["stop"]:
         print("프로그램 종료")
