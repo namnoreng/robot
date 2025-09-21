@@ -681,6 +681,18 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                 if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
                     print(f"[Marker10 Alignment] 중앙보정 필요! 편차: {deviation_x} (허용값: {alignment_tolerance})")
                     if serial_server:
+                        print(f"[Marker10 Alignment] 시리얼 서버 연결 상태: OK")
+                        
+                        # 간단한 평행이동 테스트 (디버깅용)
+                        print(f"[Marker10 Alignment] === 평행이동 테스트 시작 ===")
+                        print(f"[Marker10 Alignment] 테스트: left_slide 명령 전송")
+                        serial_server.write(direction_commands["left_slide"])
+                        time.sleep(0.5)
+                        print(f"[Marker10 Alignment] 테스트: stop 명령 전송")
+                        serial_server.write(direction_commands["stop"])
+                        time.sleep(0.5)
+                        print(f"[Marker10 Alignment] === 평행이동 테스트 완료 ===")
+                        
                         # 현재 진행 방향 정지
                         # serial_server.write(direction_commands["stop"])
                         # time.sleep(0.1)
@@ -723,10 +735,13 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                                     slide_direction = "right_slide"
                         
                         # 평행이동 명령 시작
+                        print(f"[Marker10 Alignment] 평행이동 명령 전송: {slide_direction} -> {direction_commands[slide_direction]}")
                         serial_server.write(direction_commands[slide_direction])
+                        time.sleep(0.1)  # 명령 전송 확실히 하기
                         
                         # 편차가 허용 오차 이내에 들어올 때까지 평행이동 계속
-                        slide_timeout = time.time() + 3.0  # 최대 3초 타임아웃
+                        slide_timeout = time.time() + 5.0  # 최대 5초 타임아웃 (3초 -> 5초)
+                        print(f"[Marker10 Alignment] 평행이동 루프 시작 - 타임아웃: 5초")
                         while True:
                             ret_slide, frame_slide = cap.read()
                             if not ret_slide:
@@ -762,13 +777,15 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                                 print("[Marker10 Alignment] 평행이동 타임아웃 - 강제 종료")
                                 break
                             
-                            time.sleep(0.05)  # 짧은 프레임 처리 딜레이
+                            time.sleep(0.1)  # 프레임 처리 딜레이 (0.05 -> 0.1초)
                         
                         # 평행이동 정지
+                        print(f"[Marker10 Alignment] 평행이동 정지 명령 전송: {direction_commands['stop']}")
                         serial_server.write(direction_commands["stop"])
-                        time.sleep(0.2)  # 정지 확실히 하기
+                        time.sleep(0.3)  # 정지 확실히 하기 (0.2 -> 0.3초)
                         
                         # 다시 원래 방향으로 진행
+                        print(f"[Marker10 Alignment] 원래 방향 재시작: {direction} -> {direction_commands[direction]}")
                         serial_server.write(direction_commands[direction])
                         print(f"[Marker10 Alignment] 평행이동 완료 - {direction} 재시작")
                         last_alignment_time = current_time
