@@ -612,11 +612,21 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     last_alignment_time = time.time()
     alignment_interval = 0.2  # 정렬 명령 간격 (초)
     
+    frame_count = 0
+    status_interval = 30  # 30프레임마다 상태 출력
+    
+    print(f"[Marker10 Alignment] 메인 루프 시작 - 목표 마커: {target_marker_id}, 방향: {direction}")
+    
     while True:
+        frame_count += 1
         ret, frame = cap.read()
         if not ret:
             print("[Marker10 Alignment] 카메라 프레임 읽기 실패")
             break
+        
+        # 주기적 상태 출력
+        if frame_count % status_interval == 0:
+            print(f"[Marker10 Alignment] 프레임 {frame_count} 처리 중... (방향: {direction})")
         
         # 왜곡 보정 적용
         undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs)
@@ -628,6 +638,8 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
         # 검출된 마커가 있는 경우
         if ids is not None:
             ids = ids.flatten()
+            detected_markers = list(ids)
+            print(f"[Marker10 Alignment] 검출된 마커들: {detected_markers}")
             
             # 목표 마커 확인
             if target_marker_id in ids:
@@ -639,14 +651,16 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                 )
                 target_distance_measured = np.linalg.norm(target_tvecs[0][0])
                 
-                print(f"[Marker10 Alignment] 목표 마커 {target_marker_id} 발견! 거리: {target_distance_measured:.3f}m")
+                print(f"[Marker10 Alignment] 🎯 목표 마커 {target_marker_id} 발견! 거리: {target_distance_measured:.3f}m")
                 
                 # 목표 거리에 도달했으면 완료
                 if target_distance_measured <= target_distance:
-                    print(f"[Marker10 Alignment] 목표 거리 도달! 완료")
+                    print(f"[Marker10 Alignment] ✅ 목표 거리 도달! 완료")
                     if serial_server:
                         serial_server.write(direction_commands["stop"])
                     return True
+            else:
+                print(f"[Marker10 Alignment] ⚠️ 목표 마커 {target_marker_id} 미발견 (검출된 마커: {detected_markers})")
             
             # 10번 마커 중앙 정렬 처리
             if 10 in ids:
@@ -660,9 +674,12 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                 # 중앙에서의 편차 계산
                 deviation_x = center_x - frame_center_x
                 
+                print(f"[Marker10 Alignment] 📍 10번 마커 발견 - 중심: ({center_x}, {center_y}), 편차: {deviation_x}")
+                
                 # 중앙 정렬이 필요한 경우 (일정 간격으로만 실행)
                 current_time = time.time()
                 if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
+                    print(f"[Marker10 Alignment] 🔧 중앙보정 필요! 편차: {deviation_x} (허용값: {alignment_tolerance})")
                     if serial_server:
                         # 현재 진행 방향 정지
                         # serial_server.write(direction_commands["stop"])
@@ -709,19 +726,20 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                         # 평행이동 후 정지
                         # serial_server.write(direction_commands["stop"])
                         # time.sleep(0.1)
-
-                else :        
-                    # 다시 원래 방향으로 진행
-                    serial_server.write(direction_commands[direction])
-                    last_alignment_time = current_time
+                        
+                        # 다시 원래 방향으로 진행
+                        serial_server.write(direction_commands[direction])
+                        last_alignment_time = current_time
+                else:
+                    print(f"[Marker10 Alignment] ✅ 10번 마커 중앙정렬 OK (편차: {deviation_x}, 허용값: {alignment_tolerance})")
             
-            # 10번 마커가 없는 경우는 별도 처리 없음 (콘솔 메시지만)
+            # 10번 마커가 없는 경우
             else:
-                pass  # 10번 마커가 없을 때는 그냥 진행
+                print(f"[Marker10 Alignment] ❌ 10번 마커 미발견 (검출된 마커: {detected_markers})")
         
-        # 마커가 전혀 없는 경우도 별도 처리 없음
+        # 마커가 전혀 없는 경우
         else:
-            pass  # 마커가 없을 때는 그냥 진행
+            print("[Marker10 Alignment] ❌ 마커 검출 실패 - 화면에 마커가 없음")
         
         #시험삼아 수정
         
