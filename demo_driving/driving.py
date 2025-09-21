@@ -610,7 +610,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     }
     
     last_alignment_time = time.time()
-    alignment_interval = 0.2  # 정렬 명령 간격 (초)
+    alignment_interval = 1.2  # 정렬 명령 간격 (0.2 -> 1.2초로 증가)
     
     frame_count = 0
     status_interval = 30  # 30프레임마다 상태 출력
@@ -721,14 +721,15 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                                     print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
                                     serial_server.write(direction_commands["right_slide"])
                         
-                        time.sleep(0.5)  # 짧은 평행이동
+                        time.sleep(0.5)  # 평행이동 시간
                         
-                        # 평행이동 후 정지
-                        # serial_server.write(direction_commands["stop"])
-                        # time.sleep(0.1)
+                        # 평행이동 후 반드시 정지
+                        serial_server.write(direction_commands["stop"])
+                        time.sleep(0.3)  # 정지 확실히 하기
                         
                         # 다시 원래 방향으로 진행
                         serial_server.write(direction_commands[direction])
+                        print(f"[Marker10 Alignment] 평행이동 완료 - {direction} 재시작")
                         last_alignment_time = current_time
                 else:
                     print(f"[Marker10 Alignment] 10번 마커 중앙정렬 OK (편차: {deviation_x}, 허용값: {alignment_tolerance})")
