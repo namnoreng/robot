@@ -685,47 +685,88 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                         # serial_server.write(direction_commands["stop"])
                         # time.sleep(0.1)
                         
-                        # 진행 방향과 카메라 설정에 따른 평행이동 방향 결정
+                        # 평행이동을 편차가 허용 오차 이내가 될 때까지 반복
+                        slide_direction = None
                         if direction == "forward":
                             if opposite_camera:
                                 # 직진 + 후방카메라: 화면이 반대로 보임
                                 if deviation_x > 0:
-                                    print(f"[Marker10 Alignment] 직진(후방카메라)-좌측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["left_slide"])
+                                    print(f"[Marker10 Alignment] 직진(후방카메라)-좌측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "left_slide"
                                 else:
-                                    print(f"[Marker10 Alignment] 직진(후방카메라)-우측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["right_slide"])
+                                    print(f"[Marker10 Alignment] 직진(후방카메라)-우측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "right_slide"
                             else:
                                 # 직진 + 전방카메라: 일반적인 방향
                                 if deviation_x > 0:
-                                    print(f"[Marker10 Alignment] 직진-우측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["right_slide"])
+                                    print(f"[Marker10 Alignment] 직진-우측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "right_slide"
                                 else:
-                                    print(f"[Marker10 Alignment] 직진-좌측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["left_slide"])
+                                    print(f"[Marker10 Alignment] 직진-좌측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "left_slide"
                         elif direction == "backward":
                             if opposite_camera:
                                 # 후진 + 전방카메라: 일반적인 방향 (화면 기준)
                                 if deviation_x > 0:
-                                    print(f"[Marker10 Alignment] 후진(전방카메라)-우측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["right_slide"])
+                                    print(f"[Marker10 Alignment] 후진(전방카메라)-우측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "right_slide"
                                 else:
-                                    print(f"[Marker10 Alignment] 후진(전방카메라)-좌측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["left_slide"])
+                                    print(f"[Marker10 Alignment] 후진(전방카메라)-좌측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "left_slide"
                             else:
                                 # 후진 + 후방카메라: 후진이므로 반대
                                 if deviation_x > 0:
-                                    print(f"[Marker10 Alignment] 후진-좌측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["left_slide"])
+                                    print(f"[Marker10 Alignment] 후진-좌측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "left_slide"
                                 else:
-                                    print(f"[Marker10 Alignment] 후진-우측 평행이동 (편차: {deviation_x})")
-                                    serial_server.write(direction_commands["right_slide"])
+                                    print(f"[Marker10 Alignment] 후진-우측 평행이동 시작 (편차: {deviation_x})")
+                                    slide_direction = "right_slide"
                         
-                        time.sleep(0.5)  # 평행이동 시간
+                        # 평행이동 명령 시작
+                        serial_server.write(direction_commands[slide_direction])
                         
-                        # 평행이동 후 반드시 정지
+                        # 편차가 허용 오차 이내에 들어올 때까지 평행이동 계속
+                        slide_timeout = time.time() + 3.0  # 최대 3초 타임아웃
+                        while True:
+                            ret_slide, frame_slide = cap.read()
+                            if not ret_slide:
+                                break
+                            
+                            # 왜곡 보정 적용
+                            undistorted_frame_slide = cv2.undistort(frame_slide, camera_matrix, dist_coeffs)
+                            gray_slide = cv2.cvtColor(undistorted_frame_slide, cv2.COLOR_BGR2GRAY)
+                            
+                            # ArUco 마커 검출
+                            corners_slide, ids_slide, _ = aruco.detectMarkers(gray_slide, marker_dict, parameters=param_markers)
+                            
+                            # 10번 마커 다시 확인
+                            if ids_slide is not None:
+                                ids_slide = ids_slide.flatten()
+                                if 10 in ids_slide:
+                                    marker10_idx_slide = np.where(ids_slide == 10)[0][0]
+                                    marker10_corners_slide = corners_slide[marker10_idx_slide]
+                                    
+                                    # 10번 마커 중심점 재계산
+                                    center_x_slide = int(marker10_corners_slide[0][:, 0].mean())
+                                    deviation_x_slide = center_x_slide - frame_center_x
+                                    
+                                    print(f"[Marker10 Alignment] 평행이동 중 - 편차: {deviation_x_slide}")
+                                    
+                                    # 편차가 허용 오차 이내면 평행이동 완료
+                                    if abs(deviation_x_slide) <= alignment_tolerance:
+                                        print(f"[Marker10 Alignment] 평행이동 완료! 최종 편차: {deviation_x_slide}")
+                                        break
+                            
+                            # 타임아웃 체크
+                            if time.time() > slide_timeout:
+                                print("[Marker10 Alignment] 평행이동 타임아웃 - 강제 종료")
+                                break
+                            
+                            time.sleep(0.05)  # 짧은 프레임 처리 딜레이
+                        
+                        # 평행이동 정지
                         serial_server.write(direction_commands["stop"])
-                        time.sleep(0.3)  # 정지 확실히 하기
+                        time.sleep(0.2)  # 정지 확실히 하기
                         
                         # 다시 원래 방향으로 진행
                         serial_server.write(direction_commands[direction])
