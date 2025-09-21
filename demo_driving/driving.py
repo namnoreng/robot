@@ -771,6 +771,14 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                                     if abs(deviation_x_slide) <= alignment_tolerance:
                                         print(f"[Marker10 Alignment] 평행이동 완료! 최종 편차: {deviation_x_slide}")
                                         break
+                                else:
+                                    # 10번 마커를 놓쳤으면 바로 종료
+                                    print("[Marker10 Alignment] 10번 마커 놓침 - 평행이동 즉시 중단")
+                                    break
+                            else:
+                                # 마커가 전혀 검출되지 않으면 바로 종료
+                                print("[Marker10 Alignment] 마커 검출 실패 - 평행이동 즉시 중단")
+                                break
                             
                             # 타임아웃 체크
                             if time.time() > slide_timeout:
