@@ -519,7 +519,7 @@ def escape_from_parking(cap, aruco_dict, parameters, marker_index, camera_matrix
 def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, target_marker_id, 
                                    camera_front_matrix, dist_front_coeffs,
                                    camera_back_matrix, dist_back_coeffs, target_distance=0.15, 
-                                   serial_server=None, direction="forward", opposite_camera=False):
+                                   serial_server=None, direction="forward", opposite_camera=False, use_command_7=False):
     """
     10번 마커를 기준으로 중앙 정렬하면서 특정 마커를 찾을 때까지 직진/후진하는 함수
     
@@ -537,6 +537,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     - serial_server: 시리얼 통신 객체
     - direction: 이동 방향 ("forward" 또는 "backward")
     - opposite_camera: True면 진행방향과 반대 카메라 사용 (예: 전방카메라로 후진)
+    - use_command_7: True면 후진 시 b"2" 대신 b"7" 명령 사용
     
     Returns:
     - bool: 목표 마커 발견 시 True, 실패 시 False
@@ -544,7 +545,16 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     
     print(f"[Marker10 Alignment] 시작 - 목표 마커: {target_marker_id}, 방향: {direction}")
     print(f"[Marker10 Alignment] 반대 카메라 사용: {opposite_camera}")
+    print(f"[Marker10 Alignment] 7번 명령 사용: {use_command_7}")
     print("[Marker10 Alignment] 10번 마커로 중앙 정렬하면서 진행합니다.")
+    
+    # 실제 사용할 명령 결정
+    if direction == "backward" and use_command_7:
+        actual_direction_command = "command_7"
+        print("[Marker10 Alignment] 후진 방향이지만 7번 명령을 사용합니다.")
+    else:
+        actual_direction_command = direction
+        print(f"[Marker10 Alignment] 기본 명령 사용: {direction}")
     
     # 방향에 따라 사용할 카메라와 매트릭스 선택 (opposite_camera 옵션 고려)
     if opposite_camera:
@@ -606,6 +616,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
         "right_turn": b"4",   # 우회전
         "left_slide": b"5",   # 좌측 평행이동
         "right_slide": b"6",  # 우측 평행이동
+        "command_7": b"7",    # 7번 명령 (후진 대체)
         "stop": b"9"          # 정지
     }
     
@@ -793,8 +804,8 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                         time.sleep(0.3)  # 정지 확실히 하기 (0.2 -> 0.3초)
                         
                         # 다시 원래 방향으로 진행
-                        print(f"[Marker10 Alignment] 원래 방향 재시작: {direction} -> {direction_commands[direction]}")
-                        serial_server.write(direction_commands[direction])
+                        print(f"[Marker10 Alignment] 원래 방향 재시작: {actual_direction_command} -> {direction_commands[actual_direction_command]}")
+                        serial_server.write(direction_commands[actual_direction_command])
                         print(f"[Marker10 Alignment] 평행이동 완료 - {direction} 재시작")
                         last_alignment_time = current_time
                 else:
