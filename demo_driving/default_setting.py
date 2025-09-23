@@ -499,7 +499,7 @@ while True:
         print(f"마커 {marker_index}번을 기준으로 위치 초기화를 시작합니다...")
         
         # 위치 초기화 실행
-        driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index, serial_server)
+        driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
         
         # 동작 종료 안내
         print(f"마커 {marker_index}번을 기준으로 위치 초기화가 완료되었습니다.")
