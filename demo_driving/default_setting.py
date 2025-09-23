@@ -477,10 +477,36 @@ while True:
 
     elif mode == mode_state["reset_position"]:
         print("위치 초기화 모드 진입")
-        if cap_front is not None:
-            driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server)
-        else:
+        
+        if cap_front is None:
             print("❌ 전면 카메라가 없어 위치 초기화를 할 수 없습니다.")
+            continue
+        
+        if serial_server is None:
+            print("❌ 시리얼 통신이 연결되지 않아 로봇을 제어할 수 없습니다.")
+            continue
+        
+        # 사용자로부터 마커 인덱스 입력 받기
+        try:
+            marker_index = int(input("초기화할 마커 ID를 입력하세요 (기본값: 17): ") or "17")
+            if marker_index < 0 or marker_index > 250:  # ArUco 마커 범위 확인
+                print("❌ 잘못된 마커 ID입니다. 0-250 사이의 값을 입력하세요.")
+                continue
+        except ValueError:
+            print("❌ 숫자를 입력하세요.")
+            continue
+        
+        print(f"마커 {marker_index}번을 기준으로 위치 초기화를 시작합니다...")
+        
+        # 위치 초기화 실행
+        driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index, serial_server)
+        
+        # 동작 종료 안내
+        print(f"마커 {marker_index}번을 기준으로 위치 초기화가 완료되었습니다.")
+    
+        # 안전을 위해 정지
+        serial_server.write(b"9")
+        print("로봇 정지")
 
     elif mode == mode_state["marker10_alignment"]:
         print("10번 마커 중앙정렬 주행 모드 진입")
