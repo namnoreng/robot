@@ -489,8 +489,8 @@ while True:
         # 사용자로부터 마커 인덱스 입력 받기
         try:
             marker_index = int(input("초기화할 마커 ID를 입력하세요 (기본값: 17): ") or "17")
-            if marker_index < 0 or marker_index > 250:  # ArUco 마커 범위 확인
-                print("❌ 잘못된 마커 ID입니다. 0-250 사이의 값을 입력하세요.")
+            if marker_index < 0 or marker_index > 19:  # ArUco 마커 범위 확인
+                print("❌ 잘못된 마커 ID입니다. 0-19 사이의 값을 입력하세요.")
                 continue
         except ValueError:
             print("❌ 숫자를 입력하세요.")
@@ -503,7 +503,7 @@ while True:
         
         # 동작 종료 안내
         print(f"마커 {marker_index}번을 기준으로 위치 초기화가 완료되었습니다.")
-    
+
         # 안전을 위해 정지
         serial_server.write(b"9")
         print("로봇 정지")
