@@ -149,59 +149,14 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
             break
 
         else:
-            # 마커를 찾지 못했을 때
+            print(f"[Initialize] 마커 {marker_index}를 찾지 못했습니다. ({camera_type})")
             marker_lost_count += 1
-            print(f"[Initialize] 마커를 찾지 못했습니다. ({marker_lost_count}/{MAX_LOST_FRAMES}) ({camera_type})")
-            
-            if marker_lost_count >= MAX_LOST_FRAMES and last_marker_position is not None:
-                # 마커를 일정 시간 이상 놓쳤고, 마지막 위치 정보가 있을 때
-                last_x, last_y = last_marker_position
-                
-                print(f"[Initialize] 마커 재탐색 중... 마지막 위치: ({last_x}, {last_y}) ({camera_type})")
-                
-                # 마지막 위치를 기준으로 이동 방향 결정 (뒷카메라일 때는 좌우 명령 반대)
-                if last_x < FRAME_CENTER_X - 100:  # 마커가 왼쪽에 있었음
-                    if is_back_camera:
-                        print(f"[Initialize] 마커가 왼쪽에 있었음 - 오른쪽으로 이동 ({camera_type} - 반대 명령)")
-                        serial_server.write('6'.encode())  # 뒷카메라: 반대 명령
-                    else:
-                        print(f"[Initialize] 마커가 왼쪽에 있었음 - 왼쪽으로 이동 ({camera_type})")
-                        serial_server.write('5'.encode())  # 전방카메라: 정상 명령
-                elif last_x > FRAME_CENTER_X + 100:  # 마커가 오른쪽에 있었음
-                    if is_back_camera:
-                        print(f"[Initialize] 마커가 오른쪽에 있었음 - 왼쪽으로 이동 ({camera_type} - 반대 명령)")
-                        serial_server.write('5'.encode())  # 뒷카메라: 반대 명령
-                    else:
-                        print(f"[Initialize] 마커가 오른쪽에 있었음 - 오른쪽으로 이동 ({camera_type})")
-                        serial_server.write('6'.encode())  # 전방카메라: 정상 명령
-                elif last_y < FRAME_CENTER_Y - 100:  # 마커가 위쪽에 있었음
-                    print(f"[Initialize] 마커가 위쪽에 있었음 - 전진 ({camera_type})")
-                    serial_server.write('1'.encode())  # 전진
-                elif last_y > FRAME_CENTER_Y + 100:  # 마커가 아래쪽에 있었음
-                    print(f"[Initialize] 마커가 아래쪽에 있었음 - 후진 ({camera_type})")
-                    serial_server.write('2'.encode())  # 후진
-                else:
-                    # 중앙 근처에서 사라진 경우 - 약간 후진해서 시야 확보
-                    print(f"[Initialize] 마커가 중앙에서 사라짐 - 후진하여 시야 확보 ({camera_type})")
-                    serial_server.write('2'.encode())  # 후진
-                
-                time.sleep(0.5)  # 이동 후 잠시 대기
-                serial_server.write('9'.encode())  # 정지
-                marker_lost_count = 0  # 카운터 리셋
-                
-            elif marker_lost_count >= MAX_LOST_FRAMES * 2:
-                # 너무 오래 못 찾으면 정지
-                print(f"[Initialize] 마커를 찾을 수 없어 초기화를 중단합니다. ({camera_type})")
+            if marker_lost_count > MAX_LOST_FRAMES:
+                print(f"[Initialize] 마커 {marker_index}를 {MAX_LOST_FRAMES} 프레임 이상 놓침 - 초기화 중단 ({camera_type})")
+                if last_marker_position is not None:
+                    print(f"[Initialize] 마지막으로 본 마커 위치: {last_marker_position} ({camera_type})")
                 serial_server.write('9'.encode())  # 정지 명령
                 break
-            else:
-                # 잠시 정지하고 다시 시도
-                serial_server.write('9'.encode())  # 정지 명령
-
-        time.sleep(0.1)  # 프레임 처리 딜레이
-        #cv2.imshow("frame", frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
 
     cv2.destroyAllWindows()
 
