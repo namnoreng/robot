@@ -1171,16 +1171,16 @@ try:
                     continue
                 if serial_server is not None:
                     serial_server.write(b"9")
-                
-                # 간단한 후진 제어: 마커 17번 인식까지 후진 (중앙정렬)
-                print("[Client] 마커 17번 인식까지 후진 시작... (마커10 중앙정렬)")
+
+                # 간단한 후진 제어: 마커 3번 인식까지 후진 (중앙정렬)
+                print("[Client] 마커 3번 인식까지 후진 시작... (마커10 중앙정렬)")
                 if serial_server is not None:
                     serial_server.write(b"2")  # 후진 시작
                 
-                # 뒷카메라로 마커 17번 인식 (동적 거리 사용) with 중앙정렬
+                # 뒷카메라로 마커 3번 인식 (동적 거리 사용) with 중앙정렬
                 print(f"[Client] 동적 인식 거리 {dynamic_target_distance:.3f}m 사용")
                 if cap_back is not None:
-                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
+                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers,
                                                             target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
@@ -1204,7 +1204,6 @@ try:
                 if serial_server is not None:
                     # 8번 명령 전 버퍼 클리어 (안전장치)
                     serial_server.reset_input_buffer()
-                    
                     serial_server.write(b"8")  # 차량 내려놓기 명령
                     print("[Client] 내려놓기 완료 신호('c') 대기 중...")
                     
@@ -1227,7 +1226,6 @@ try:
                                 else:
                                     print("[Client] 최종 차량 간격 데이터 수신 실패 - 기본 거리 사용")
                                     final_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
-                                
                                 break
                             else:
                                 print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
