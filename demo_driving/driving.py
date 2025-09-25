@@ -772,8 +772,6 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
         else:
             print("[Marker10 Alignment] 마커 검출 실패 - 화면에 마커가 없음")
         
-        #시험삼아 수정
-        
         # ESC 키로 종료
         if cv2.waitKey(1) & 0xFF == 27:
             print("[Marker10 Alignment] 사용자가 중단했습니다")
