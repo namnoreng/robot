@@ -620,11 +620,19 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                 print(f"[Marker10 Alignment] 목표 마커 {target_marker_id} 발견! 거리: {target_distance_measured:.3f}m")
                 
                 # 목표 거리에 도달했으면 완료
-                if target_distance_measured <= target_distance:
-                    print(f"[Marker10 Alignment] 목표 거리 도달! 완료")
-                    if serial_server:
-                        serial_server.write(direction_commands["stop"])
-                    return True
+                if opposite_camera == False:
+                    if target_distance_measured <= target_distance:
+                        print(f"[Marker10 Alignment] 목표 거리 도달! 완료")
+                        if serial_server:
+                            serial_server.write(direction_commands["stop"])
+                        return True
+                else:
+                    if target_distance_measured >= target_distance:
+                        print(f"[Marker10 Alignment] 목표 거리 도달! 완료")
+                        if serial_server:
+                            serial_server.write(direction_commands["stop"])
+                        return True
+
             else:
                 print(f"[Marker10 Alignment] 목표 마커 {target_marker_id} 미발견 (검출된 마커: {detected_markers})")
             
