@@ -677,25 +677,25 @@ while True:
             use_camera = cap_front
             camera_matrix = camera_front_matrix
             dist_coeffs = dist_front_coeffs
-            camera_name = "전방카메라"
+            camera_name = "front"
         elif camera_choice == "2":
             if cap_back is not None and camera_back_matrix is not None:
                 use_camera = cap_back
                 camera_matrix = camera_back_matrix
                 dist_coeffs = dist_back_coeffs
-                camera_name = "후방카메라"
+                camera_name = "back"
             else:
                 print("❌ 후방카메라가 설정되지 않아 전방카메라를 사용합니다.")
                 use_camera = cap_front
                 camera_matrix = camera_front_matrix
                 dist_coeffs = dist_front_coeffs
-                camera_name = "전방카메라 (대체)"
+                camera_name = "front"
         else:
             print("❌ 잘못된 선택입니다. 후방카메라를 기본값으로 사용합니다.")
             use_camera = cap_back if cap_back is not None else cap_front
             camera_matrix = camera_back_matrix if camera_back_matrix is not None else camera_front_matrix
             dist_coeffs = dist_back_coeffs if dist_back_coeffs is not None else dist_front_coeffs
-            camera_name = "후방카메라" if cap_back is not None else "전방카메라 (대체)"
+            camera_name = "back" if cap_back is not None else "front"
         
         print(f"설정: 마커 {alignment_marker} 기준 중앙정렬, {camera_name} 사용")
         print("3초 후 시작합니다... (ESC 키로 중단 가능)")
@@ -709,7 +709,8 @@ while True:
             camera_matrix=camera_matrix,
             dist_coeffs=dist_coeffs,
             serial_server=serial_server,
-            alignment_marker_id=alignment_marker
+            alignment_marker_id=alignment_marker,
+            camera_direction=camera_name
         )
         
         # 결과 출력
