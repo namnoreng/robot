@@ -25,6 +25,8 @@ FPS = 30
 
 # 기본 ArUco 인식 거리 설정 (미터 단위)
 DEFAULT_ARUCO_DISTANCE = 0.15
+MARKER2_ARUCO_DISTANCE = 0.03
+MARKER0_ARUCO_DISTANCE = 0.038
 
 def gstreamer_pipeline(capture_width=640, capture_height=480, 
                       display_width=640, display_height=480, 
@@ -692,18 +694,10 @@ try:
                                                         target_marker_id=2, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                        target_distance=final_target_distance, serial_server=serial_server)
+                                                        target_distance=final_target_distance-MARKER2_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
                 
                 # 마커 2번 인식 후 추가로 직진하여 두 번째 0번 마커 근처로 이동
-                print("[Client] 마커 2번 인식 완료, 추가 직진하여 두 번째 0번 마커로...")
-                
-                # 이제 0번 마커 인식 (두 번째 0번이어야 함) (중앙정렬)
-                print("[Client] 두 번째 0번 마커 인식 시작... (마커10 중앙정렬)")
-                driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker_id=0, direction="forward", 
-                                                        camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                        camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                        target_distance=final_target_distance, serial_server=serial_server)
+                print("[Client] 마커 2번 인식 완료, 탈출 성공!")
 
                 # 탈출 성공
                 client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
@@ -742,15 +736,17 @@ try:
 
                 # 3. 두 번째 마커로 복귀 (후진하면서 뒷카메라로 인식, 중앙정렬)
                 print("[Client] 두 번째 마커로 복귀 중... (후진, 뒷카메라 사용, 마커 0번 인식, 중앙정렬)")
+
                 if serial_server is not None:
                     serial_server.write(b"2")  # 후진 시작
+
                 # 뒷카메라로 마커 0번 인식 (중앙정렬)
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker_id=0, direction="backward", 
-                                                            camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                            camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance, serial_server=serial_server)
+                                                        target_marker_id=0, direction="backward", 
+                                                        camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
+                                                        camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
+                                                        target_distance=final_target_distance+MARKER0_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
                 else:
                     print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
                     print("❌ [ERROR] 후진 복귀 동작을 수행할 수 없습니다.")
@@ -792,13 +788,13 @@ try:
                 print("[Client] 초기 위치로 복귀 중... (후진, 뒷카메라 사용, 마커 3번 인식, 중앙정렬)")
                 if serial_server is not None:
                     serial_server.write(b"2")  # 후진 시작
-                # 뒷카메라로 마커 3번 인식 (중앙정렬)
+                # 뒷카메라로 마커 0번 인식 (중앙정렬)
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker_id=3, direction="backward", 
+                                                            target_marker_id=0, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance, serial_server=serial_server)
+                                                            target_distance=final_target_distance+MARKER0_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
                 else:
                     print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
                     print("❌ [ERROR] 초기 위치 복귀를 위한 후진 동작을 수행할 수 없습니다.")
@@ -810,8 +806,8 @@ try:
                     client_socket.sendall(f"starting_point,0,None,None\n".encode())
                     serial_server.write(b"9")  # 정지
                 
-                # 6. 최종 위치 조정 (마커 17로 이동 - 초기 대기 위치)
-                print("[Client] 최종 대기 위치로 이동...")
+                # 6. 최종 위치 조정 (동작 확인 후 수정 필요)
+                print("[Client] 최종 대기 위치로 이동...(동작 확인 필요하여 일단 제외)")
                 #if serial_server is not None:
                     # driving.initialize_robot(cap_back, marker_dict, param_markers, 3, serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, is_back_camera=True)
 
@@ -1007,9 +1003,6 @@ try:
                 # 3. 차량 들어올리기 (7번 명령으로 진입)
                 print("[Client] 차량 들어올리기 시작...")
                 if serial_server is not None:
-                    # 기존: 단순한 7번 명령
-                    # serial_server.write(b"7")  # 차량 들어올리기 명령
-                    # print("[Client] 들어올리기 완료 신호('a') 대기 중...")
                     
                     # 새로운: 중앙정렬 후진 with 7번 명령
                     print("[Client] 7번 명령으로 중앙정렬 후진 시작 (마커10 기준)...")
@@ -1080,10 +1073,12 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"1")
                 
-                #여기도 수정 필요
-                escape_success = driving.escape_from_parking(cap_front, marker_dict, param_markers, marker_index=0, 
-                                                   camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, 
-                                                   target_distance=0.3)
+                # 탈출 동작 구현
+                driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
+                                                        target_marker_id=2, direction="forward", 
+                                                        camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
+                                                        camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
+                                                        target_distance=final_target_distance-MARKER2_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
                 if serial_server is not None:
                     serial_server.write(b"9")
                     time.sleep(0.5)
@@ -1121,13 +1116,14 @@ try:
                                                             target_marker_id=0, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance, serial_server=serial_server)
+                                                            target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
                 else:
-                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker_id=0, direction="backward", 
-                                                            camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                            camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance, serial_server=serial_server)
+                    print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
+                    print("❌ [ERROR] 후진 복귀 동작을 수행할 수 없습니다.")
+                    if serial_server is not None:
+                        serial_server.write(b"9")  # 긴급 정지
+                    client_socket.sendall(b"ERROR: Rear camera not available for backward return\n")
+                    continue
                 if serial_server is not None:
                     serial_server.write(b"9")
                     time.sleep(0.5)
@@ -1162,42 +1158,19 @@ try:
                     serial_server.write(b"2")
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker_id=3, direction="backward", 
+                                                            target_marker_id=0, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance, serial_server=serial_server)
+                                                            target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
                 else:
-                    driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker_id=3, direction="backward", 
-                                                            camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
-                                                            camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance, serial_server=serial_server)
+                    print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
+                    print("❌ [ERROR] 후진 복귀 동작을 수행할 수 없습니다.")
+                    if serial_server is not None:
+                        serial_server.write(b"9")  # 긴급 정지
+                    client_socket.sendall(b"ERROR: Rear camera not available for backward return\n")
+                    continue
                 if serial_server is not None:
                     serial_server.write(b"9")
-                
-                # 5. 차량 대기 장소로 이동 (기존 복합 후진 제어 함수 활용) - 주석처리
-                # print("[Client] 차량 대기 장소로 이동... (복합 후진 제어)")
-                
-                # 기존 advanced_parking_control 함수 사용 (마커 17, 3 사용) - 주석처리
-                # success = driving.advanced_parking_control(
-                #     cap_front, cap_back, marker_dict, param_markers,
-                #     camera_front_matrix, dist_front_coeffs,
-                #     camera_back_matrix, dist_back_coeffs, serial_server,
-                #     back_marker_id=17, front_marker_id=3
-                # )
-                
-                # if success:
-                #     print("[Client] 차량 대기 장소 도착 성공")
-                # else:
-                #     print("[Client] 복합 후진 제어 실패 - 기본 후진으로 대체")
-                #     # 실패 시 기본 후진으로 마커 17까지 이동
-                #     if serial_server is not None:
-                #         serial_server.write(b"2")  # 후진
-                #     driving.driving(cap_back if cap_back is not None else cap_front, marker_dict, param_markers, marker_index=17, 
-                #                   camera_matrix=camera_back_matrix if cap_back is not None else camera_front_matrix, 
-                #                   dist_coeffs=dist_back_coeffs if cap_back is not None else dist_front_coeffs)
-                #     if serial_server is not None:
-                #         serial_server.write(b"9")  # 정지
                 
                 # 간단한 후진 제어: 마커 17번 인식까지 후진 (중앙정렬)
                 print("[Client] 마커 17번 인식까지 후진 시작... (마커10 중앙정렬)")
@@ -1208,10 +1181,10 @@ try:
                 print(f"[Client] 동적 인식 거리 {dynamic_target_distance:.3f}m 사용")
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                            target_marker_id=17, direction="backward", 
+                                                            target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=dynamic_target_distance, serial_server=serial_server)
+                                                            target_distance=dynamic_target_distance, serial_server=serial_server, opposite_camera=True)
                     print("[Client] 뒷카메라로 마커 17번 인식 완료 (중앙정렬)")
                 else:
                     # 뒷카메라가 없으면 에러 처리
@@ -1281,9 +1254,9 @@ try:
                 print("[Client] 로봇 초기 위치로 복귀... (전진)")
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진
-                # 로봇 초기 위치까지 전진 (마커 17 인식, 중앙정렬)
+                # 로봇 초기 위치까지 전진 (마커 0 인식, 중앙정렬)
                 driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker_id=17, direction="forward", 
+                                                        target_marker_id=0, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=final_target_distance, serial_server=serial_server)
