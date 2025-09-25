@@ -657,16 +657,6 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                     if serial_server:
                         print(f"[Marker10 Alignment] 시리얼 서버 연결 상태: OK")
                         
-                        # 간단한 평행이동 테스트 (디버깅용)
-                        print(f"[Marker10 Alignment] === 평행이동 테스트 시작 ===")
-                        print(f"[Marker10 Alignment] 테스트: left_slide 명령 전송")
-                        serial_server.write(direction_commands["left_slide"])
-                        time.sleep(0.5)
-                        print(f"[Marker10 Alignment] 테스트: stop 명령 전송")
-                        serial_server.write(direction_commands["stop"])
-                        time.sleep(0.5)
-                        print(f"[Marker10 Alignment] === 평행이동 테스트 완료 ===")
-                        
                         # 현재 진행 방향 정지
                         # serial_server.write(direction_commands["stop"])
                         # time.sleep(0.1)
