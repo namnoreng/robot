@@ -561,7 +561,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     
     # 화면 중앙 계산
     frame_center_x = 320  # 640x480 해상도 기준
-    alignment_tolerance = 35  # 중앙 정렬 허용 오차 (픽셀)
+    alignment_tolerance = 30  # 중앙 정렬 허용 오차 (픽셀)
     
     # 방향별 시리얼 명령
     direction_commands = {
@@ -658,8 +658,8 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                         print(f"[Marker10 Alignment] 시리얼 서버 연결 상태: OK")
                         
                         # 현재 진행 방향 정지
-                        # serial_server.write(direction_commands["stop"])
-                        # time.sleep(0.1)
+                        serial_server.write(direction_commands["stop"])
+                        time.sleep(0.1)
                         
                         # 평행이동을 편차가 허용 오차 이내가 될 때까지 반복
                         slide_direction = None
