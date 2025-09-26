@@ -749,7 +749,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                                 print("[Marker10 Alignment] 평행이동 타임아웃 - 강제 종료")
                                 break
                             
-                            time.sleep(0.1)  # 프레임 처리 딜레이 (0.05 -> 0.1초)
+                            time.sleep(0.05)  # 프레임 처리 딜레이 (0.05 -> 0.1초)
                         
                         # 평행이동 정지
                         print(f"[Marker10 Alignment] 평행이동 정지 명령 전송: {direction_commands['stop']}")
