@@ -561,7 +561,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     
     # 화면 중앙 계산
     frame_center_x = 320  # 640x480 해상도 기준
-    alignment_tolerance = 30  # 중앙 정렬 허용 오차 (픽셀)
+    alignment_tolerance = 40  # 중앙 정렬 허용 오차 (픽셀)
     
     # 방향별 시리얼 명령
     direction_commands = {
