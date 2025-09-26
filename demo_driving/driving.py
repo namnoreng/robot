@@ -576,7 +576,7 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
     }
     
     last_alignment_time = time.time()
-    alignment_interval = 1.2  # 정렬 명령 간격 (0.2 -> 1.2초로 증가)
+    alignment_interval = 0.4  # 정렬 명령 간격
     
     frame_count = 0
     status_interval = 30  # 30프레임마다 상태 출력
