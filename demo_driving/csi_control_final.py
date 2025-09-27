@@ -415,7 +415,8 @@ try:
                         camera_matrix=camera_front_matrix,
                         dist_coeffs=dist_front_coeffs,
                         serial_server=serial_server,
-                        alignment_marker_id=10  # 마커10 기준 중앙정렬
+                        alignment_marker_id=10,  # 마커10 기준 중앙정렬
+                        camera_direction="front"  # 전방 카메라 방향
                     )
                     
                     if success:
