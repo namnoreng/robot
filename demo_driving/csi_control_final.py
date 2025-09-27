@@ -1015,8 +1015,7 @@ try:
                         dist_coeffs=dist_back_coeffs,
                         serial_server=serial_server,
                         alignment_marker_id=10,  # 마커10 기준 중앙정렬
-                        camera_direction="back"  # 전방 카메라
-                        
+                        camera_direction="back"  # 후방 카메라
                     )
                     
                     if success:
@@ -1046,30 +1045,6 @@ try:
                                     print("[Client] 차량 들어올리기 완료!")
                                     break
                             time.sleep(0.1)
-
-                    while True:
-                        if serial_server.in_waiting:
-                            recv = serial_server.read().decode()
-                            print(f"[Client] 시리얼 수신: '{recv}'")
-                            if recv == "c":
-                                print("[Client] 차량 내려놓기 완료!")
-                                
-                                # 내려놓기 완료 후 차량 간격 데이터 수신
-                                print("[Client] 내려놓기 후 차량 간격 데이터 수신 시작...")
-                                dynamic_target_distance = receive_vehicle_distance_data()
-                                if dynamic_target_distance is not None:
-                                    print(f"[Client] 최종 차량과 로봇 간격: {dynamic_target_distance}mm ({dynamic_target_distance/10.0}cm)")
-                                    # 최종 간격 데이터를 바탕으로 복귀 시 사용할 거리 계산
-                                    final_target_distance = calculate_aruco_target_distance(dynamic_target_distance)
-                                    print(f"[Client] 복귀용 동적 ArUco 인식 거리: {final_target_distance:.3f}m")
-                                else:
-                                    print("[Client] 최종 차량 간격 데이터 수신 실패 - 기본 거리 사용")
-                                    final_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
-                                
-                                break
-                            else:
-                                print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
-                        time.sleep(0.1)
                     
                     # 들어올리기 완료 후 정지 및 안정화
                     serial_server.write(b"9")
@@ -1213,7 +1188,7 @@ try:
                 
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
-                print("[Client] 마커 17번까지 후진 완료")
+                print("[Client] 마커 3번까지 후진 완료")
                 
                 # 6. 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
