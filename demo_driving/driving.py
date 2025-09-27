@@ -959,6 +959,7 @@ def command7_backward_with_sensor_control(
                         time.sleep(0.2)  # 정지 확실히 하기
                         
                         last_alignment_time = current_time
+                        serial_server.write(direction_commands["command_7"])
                     
                     else:        
                         # 다시 7번 명령으로 진행
