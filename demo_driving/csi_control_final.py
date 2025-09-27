@@ -450,11 +450,11 @@ try:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
                             print(f"[Client] 시리얼 수신: '{recv}'")
-                            if recv == "c":
-                                print("[Client] 차량 내려놓기 완료!")
-                                
-                                # 내려놓기 완료 후 차량 간격 데이터 수신
-                                print("[Client] 내려놓기 후 차량 간격 데이터 수신 시작...")
+                            if recv == "a":
+                                print("[Client] 차량 들어올리기 완료!")
+
+                                # 들어올리기 완료 후 차량 간격 데이터 수신
+                                print("[Client] 들어올리기 후 차량 간격 데이터 수신 시작...")
                                 dynamic_target_distance = receive_vehicle_distance_data()
                                 if dynamic_target_distance is not None:
                                     print(f"[Client] 최종 차량과 로봇 간격: {dynamic_target_distance}mm ({dynamic_target_distance/10.0}cm)")
@@ -696,7 +696,6 @@ try:
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=final_target_distance-MARKER2_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
                 
-                # 마커 2번 인식 후 추가로 직진하여 두 번째 0번 마커 근처로 이동
                 print("[Client] 마커 2번 인식 완료, 탈출 성공!")
 
                 # 탈출 성공
