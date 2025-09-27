@@ -362,6 +362,8 @@ else:
 
 print("=== 카메라 및 ArUco 초기화 완료 ===")
 
+final_target_distance = DEFAULT_ARUCO_DISTANCE  # 최종 목표 거리 초기화
+
 # 클라이언트 소켓 초기화 (서버에 접속)
 host_input = input("Enter server IP (default: 127.0.0.1): ").strip()
 port_input = input("Enter server port (default: 12345): ").strip()
