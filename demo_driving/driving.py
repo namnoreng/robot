@@ -1154,3 +1154,127 @@ def sensor_based_backward_with_alignment(cap, marker_dict, param_markers,
         time.sleep(0.05)
     
     return False
+
+
+def slide_until_marker_detected(cap, marker_dict, param_markers, 
+                               camera_matrix, dist_coeffs, serial_server,
+                               target_marker_id, slide_direction="left", 
+                               timeout_seconds=10):
+    """
+    평행이동을 하면서 특정 ArUco 마커를 인식하면 멈추는 함수
+    
+    Args:
+    - cap: 카메라 객체
+    - marker_dict: ArUco 마커 딕셔너리
+    - param_markers: ArUco 검출 파라미터
+    - camera_matrix, dist_coeffs: 카메라 캘리브레이션 파라미터
+    - serial_server: 시리얼 통신 객체
+    - target_marker_id: 찾을 목표 마커 ID
+    - slide_direction: 평행이동 방향 ("left", "right")
+    - timeout_seconds: 최대 대기 시간 (초)
+    
+    Returns:
+    - True: 마커를 찾아서 정지 성공
+    - False: 타임아웃 또는 실패
+    """
+    if serial_server is None:
+        print("[Slide Until Marker] 시리얼 통신이 연결되지 않았습니다.")
+        return False
+    
+    print(f"[Slide Until Marker] {slide_direction} 평행이동 시작 - 마커{target_marker_id} 탐지 대기")
+    
+    # 방향별 시리얼 명령
+    direction_commands = {
+        "left": b"5",         # 좌측 평행이동
+        "right": b"6",        # 우측 평행이동
+        "stop": b"9"          # 정지
+    }
+    
+    # 입력 검증
+    if slide_direction not in direction_commands:
+        print(f"[Slide Until Marker] 잘못된 방향: {slide_direction}. 'left' 또는 'right'를 사용하세요.")
+        return False
+    
+    # 평행이동 시작
+    serial_server.write(direction_commands[slide_direction])
+    print(f"[Slide Until Marker] {slide_direction} 평행이동 명령 전송: {direction_commands[slide_direction]}")
+    
+    # 타임아웃 설정
+    start_time = time.time()
+    timeout = start_time + timeout_seconds
+    
+    frame_count = 0
+    status_interval = 30  # 30프레임마다 상태 출력
+    
+    while True:
+        frame_count += 1
+        
+        # 타임아웃 체크
+        current_time = time.time()
+        if current_time > timeout:
+            print(f"[Slide Until Marker] 타임아웃 ({timeout_seconds}초) - 마커{target_marker_id} 미발견")
+            serial_server.write(direction_commands["stop"])
+            return False
+        
+        # 카메라 프레임 읽기
+        ret, frame = cap.read()
+        if not ret:
+            print("[Slide Until Marker] 카메라 프레임 읽기 실패")
+            continue
+        
+        # 왜곡 보정 적용
+        if camera_matrix is not None and dist_coeffs is not None:
+            undistorted_frame = cv2.undistort(frame, camera_matrix, dist_coeffs)
+        else:
+            undistorted_frame = frame
+        
+        gray = cv2.cvtColor(undistorted_frame, cv2.COLOR_BGR2GRAY)
+        
+        # ArUco 마커 검출
+        corners, ids, _ = cv2.aruco.detectMarkers(gray, marker_dict, parameters=param_markers)
+        
+        # 주기적 상태 출력
+        if frame_count % status_interval == 0:
+            elapsed_time = current_time - start_time
+            remaining_time = timeout_seconds - elapsed_time
+            if ids is not None:
+                detected_markers = list(ids.flatten())
+                print(f"[Slide Until Marker] 프레임 {frame_count} - 검출된 마커: {detected_markers} (남은시간: {remaining_time:.1f}초)")
+            else:
+                print(f"[Slide Until Marker] 프레임 {frame_count} - 마커 미검출 (남은시간: {remaining_time:.1f}초)")
+        
+        # 마커 검출 확인
+        if ids is not None:
+            ids_flat = ids.flatten()
+            
+            # 목표 마커 발견 시
+            if target_marker_id in ids_flat:
+                # 즉시 정지
+                serial_server.write(direction_commands["stop"])
+                print(f"[Slide Until Marker] 마커{target_marker_id} 발견! 즉시 정지")
+                
+                # 마커 위치 정보 출력
+                target_idx = np.where(ids_flat == target_marker_id)[0][0]
+                marker_corners = corners[target_idx][0]
+                center_x = int(np.mean(marker_corners[:, 0]))
+                center_y = int(np.mean(marker_corners[:, 1]))
+                
+                elapsed_time = current_time - start_time
+                print(f"[Slide Until Marker] 마커{target_marker_id} 위치: ({center_x}, {center_y})")
+                print(f"[Slide Until Marker] 탐지 완료 - 소요시간: {elapsed_time:.2f}초")
+                
+                # 정지 확실히 하기
+                time.sleep(0.2)
+                return True
+        
+        # ESC 키로 수동 종료
+        if cv2.waitKey(1) & 0xFF == 27:
+            print("[Slide Until Marker] 사용자가 중단했습니다")
+            serial_server.write(direction_commands["stop"])
+            return False
+        
+        # 짧은 딜레이
+        time.sleep(0.05)
+    
+    return False
+
