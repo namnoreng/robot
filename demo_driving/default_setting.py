@@ -588,9 +588,9 @@ while True:
         print("진행방향과 반대되는 카메라를 사용하여 중앙정렬 주행을 테스트합니다.")
         
         try:
-            target_marker = int(input("목표 마커 ID를 입력하세요 (1-19): "))
-            if target_marker < 1 or target_marker > 19:
-                print("❌ 잘못된 마커 ID입니다. 1-19 사이의 값을 입력하세요.")
+            target_marker = int(input("목표 마커 ID를 입력하세요 (0-19): "))
+            if target_marker < 0 or target_marker > 19:
+                print("❌ 잘못된 마커 ID입니다. 0-19 사이의 값을 입력하세요.")
                 continue
         except ValueError:
             print("❌ 숫자를 입력하세요.")
