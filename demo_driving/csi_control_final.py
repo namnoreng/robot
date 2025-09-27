@@ -430,6 +430,18 @@ try:
                                 print(f"[Client] 시리얼 수신: '{recv}'")
                                 if recv == "a":
                                     print("[Client] 차량 들어올리기 완료!")
+
+                                    # 들어올리기 완료 후 차량 간격 데이터 수신
+                                print("[Client] 들어올리기 후 차량 간격 데이터 수신 시작...")
+                                dynamic_target_distance = receive_vehicle_distance_data()
+                                if dynamic_target_distance is not None:
+                                    print(f"[Client] 최종 차량과 로봇 간격: {dynamic_target_distance}mm ({dynamic_target_distance/10.0}cm)")
+                                    # 최종 간격 데이터를 바탕으로 복귀 시 사용할 거리 계산
+                                    final_target_distance = calculate_aruco_target_distance(dynamic_target_distance)
+                                    print(f"[Client] 복귀용 동적 ArUco 인식 거리: {final_target_distance:.3f}m")
+                                else:
+                                    print("[Client] 최종 차량 간격 데이터 수신 실패 - 기본 거리 사용")
+                                    final_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
                                     break
                             time.sleep(0.1)
                     
@@ -445,30 +457,6 @@ try:
                 else:
                     print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                     time.sleep(2)  # 시리얼이 없으면 2초 대기
-
-                while True:
-                        if serial_server.in_waiting:
-                            recv = serial_server.read().decode()
-                            print(f"[Client] 시리얼 수신: '{recv}'")
-                            if recv == "a":
-                                print("[Client] 차량 들어올리기 완료!")
-
-                                # 들어올리기 완료 후 차량 간격 데이터 수신
-                                print("[Client] 들어올리기 후 차량 간격 데이터 수신 시작...")
-                                dynamic_target_distance = receive_vehicle_distance_data()
-                                if dynamic_target_distance is not None:
-                                    print(f"[Client] 최종 차량과 로봇 간격: {dynamic_target_distance}mm ({dynamic_target_distance/10.0}cm)")
-                                    # 최종 간격 데이터를 바탕으로 복귀 시 사용할 거리 계산
-                                    final_target_distance = calculate_aruco_target_distance(dynamic_target_distance)
-                                    print(f"[Client] 복귀용 동적 ArUco 인식 거리: {final_target_distance:.3f}m")
-                                else:
-                                    print("[Client] 최종 차량 간격 데이터 수신 실패 - 기본 거리 사용")
-                                    final_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
-                                
-                                break
-                            else:
-                                print(f"[Client] 예상치 못한 신호: '{recv}' - 계속 대기...")
-                        time.sleep(0.1)
 
                 # 예시: 첫 번째 마커까지 직진 (중앙정렬)
                 print("[Client] 첫 번째 마커로 직진 시작 (마커10 중앙정렬)")
