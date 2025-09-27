@@ -1006,17 +1006,32 @@ try:
                     # 새로운: 중앙정렬 후진 with 7번 명령
                     print("[Client] 7번 명령으로 중앙정렬 후진 시작 (마커10 기준)...")
                     success = driving.command7_backward_with_sensor_control(
-                        cap=cap_front,  # 전방 카메라 사용
+                        cap=cap_back,  # 후방 카메라 사용
                         marker_dict=marker_dict,
                         param_markers=param_markers,
-                        camera_matrix=camera_front_matrix,
-                        dist_coeffs=dist_front_coeffs,
+                        camera_matrix=camera_back_matrix,
+                        dist_coeffs=dist_back_coeffs,
                         serial_server=serial_server,
-                        alignment_marker_id=10  # 마커10 기준 중앙정렬
+                        alignment_marker_id=10,  # 마커10 기준 중앙정렬
+                        camera_direction="back"  # 전방 카메라
+                        
                     )
                     
                     if success:
                         print("[Client] 7번 중앙정렬 후진 성공!")
+                        # 내려놓기 완료 후 차량 간격 데이터 수신
+                        print("[Client] 내려놓기 후 차량 간격 데이터 수신 시작...")
+                        dynamic_target_distance = receive_vehicle_distance_data()
+                        if dynamic_target_distance is not None:
+                            print(f"[Client] 최종 차량과 로봇 간격: {dynamic_target_distance}mm ({dynamic_target_distance/10.0}cm)")
+                        # 최종 간격 데이터를 바탕으로 복귀 시 사용할 거리 계산
+                            final_target_distance = calculate_aruco_target_distance(dynamic_target_distance)
+                            print(f"[Client] 복귀용 동적 ArUco 인식 거리: {final_target_distance:.3f}m")
+                        else:
+                            print("[Client] 최종 차량 간격 데이터 수신 실패 - 기본 거리 사용")
+                            final_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
+                            break
+
                     else:
                         print("[Client] 7번 중앙정렬 후진 실패 - 기본 7번 명령으로 대체")
                         # 실패 시 기본 7번 명령 실행
@@ -1064,7 +1079,7 @@ try:
                     
                     print("[Client] 시스템 안정화 완료, 복귀 시작")
 
-                # 4. 마커 17(차량 대기 위치)로 복귀 (입차와 동일한 복귀 로직)
+                # 4. (차량 대기 위치)로 복귀 (입차와 동일한 복귀 로직)
                 print("[Client] 차량 대기 위치로 복귀 시작...")
                 
                 # 주차 공간에서 나오기 (마커 0번과의 거리가 0.3m 이상이 될 때까지)
@@ -1184,7 +1199,7 @@ try:
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=dynamic_target_distance, serial_server=serial_server, opposite_camera=True)
-                    print("[Client] 뒷카메라로 마커 17번 인식 완료 (중앙정렬)")
+                    print("[Client] 뒷카메라로 마커 3번 인식 완료 (중앙정렬)")
                 else:
                     # 뒷카메라가 없으면 에러 처리
                     print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
@@ -1252,8 +1267,8 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"1")  # 전진
                 # 로봇 초기 위치까지 전진 (마커 0 인식, 중앙정렬)
-                driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
-                                                        target_marker_id=0, direction="forward", 
+                driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers,
+                                                        target_marker_id=0, direction="forward",
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                         target_distance=final_target_distance, serial_server=serial_server)
