@@ -119,20 +119,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
 
             print(f"[ID{marker_index}] Initialize Distance: {distance_cm:.1f}cm, Z-Angle: {angle_error:.1f}, Center: ({center_x}, {center_y}) ({camera_type})")
 
-            # 1. 회전값 먼저 맞추기
-            if abs(angle_error) > ANGLE_TOLERANCE:
-                if angle_error > 0:
-                    print(f"[Initialize] 우회전 ({camera_type})")
-                    serial_server.write('4'.encode())
-                    recent_command = 'right_turn'
-                else:
-                    print(f"[Initialize] 좌회전 ({camera_type})")
-                    serial_server.write('3'.encode())
-                    recent_command = 'left_turn'
-                time.sleep(0.1)  # 명령 간 딜레이
-                continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
-
-            # 2. 회전이 맞으면 중앙값 맞추기 (뒷카메라일 때는 좌우 명령 반대)
+            # 1. 중앙값 맞추기 (뒷카메라일 때는 좌우 명령 반대)
             if abs(dx) > CENTER_TOLERANCE:
                 if dx > 0:
                     if is_back_camera:
@@ -154,6 +141,19 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
                         recent_command = 'left'
                 time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 중앙이 맞을 때까지 반복
+
+            # 2. 회전값 맞추기
+            if abs(angle_error) > ANGLE_TOLERANCE:
+                if angle_error > 0:
+                    print(f"[Initialize] 우회전 ({camera_type})")
+                    serial_server.write('4'.encode())
+                    recent_command = 'right_turn'
+                else:
+                    print(f"[Initialize] 좌회전 ({camera_type})")
+                    serial_server.write('3'.encode())
+                    recent_command = 'left_turn'
+                time.sleep(0.1)  # 명령 간 딜레이
+                continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
 
             # 3. 둘 다 맞으면 정지
             print(f"[Initialize] 초기화 완료: 중앙+수직 ({camera_type})")
