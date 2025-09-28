@@ -809,8 +809,9 @@ try:
                 
                 # 6. 최종 위치 조정 (동작 확인 후 수정 필요)
                 print("[Client] 최종 대기 위치로 이동...(동작 확인 필요하여 일단 제외)")
-                #if serial_server is not None:
-                    # driving.initialize_robot(cap_back, marker_dict, param_markers, 3, serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, is_back_camera=True)
+                if serial_server is not None:
+                     driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
+                
 
                 print("[Client] 제자리 복귀 완료!")
                 
@@ -1254,8 +1255,8 @@ try:
                 
                 # 8. 로봇 초기 위치 정밀 정렬 (마커 17 기준으로 중앙+수직 정렬)
                 print("[Client] 로봇 초기 위치 정밀 정렬...")
-                # if serial_server is not None:
-                #     driving.initialize_robot(cap_front, marker_dict, param_markers, 17, serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=False)
+                if serial_server is not None:
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
                 
                 print(f"[Client] 출차 완료: {car_number}")
                 
