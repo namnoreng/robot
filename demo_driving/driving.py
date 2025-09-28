@@ -82,6 +82,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
     FRAME_CENTER_Y = 240
     CENTER_TOLERANCE = 30  # 중앙 허용 오차 (픽셀)
     ANGLE_TOLERANCE = 1    # 각도 허용 오차 (도)
+    recent_command = None
     
     # 마커 위치 추적 변수
     last_marker_position = None  # 마지막으로 본 마커 위치 (center_x, center_y)
@@ -109,6 +110,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
         if distance is not None:
             # 마커를 찾았을 때
             marker_lost_count = 0  # 카운터 리셋
+            recent_command = None
             last_marker_position = (center_x, center_y)  # 위치 업데이트
             
             dx = center_x - FRAME_CENTER_X
@@ -122,9 +124,11 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
                 if angle_error > 0:
                     print(f"[Initialize] 우회전 ({camera_type})")
                     serial_server.write('4'.encode())
+                    recent_command = 'right_turn'
                 else:
                     print(f"[Initialize] 좌회전 ({camera_type})")
                     serial_server.write('3'.encode())
+                    recent_command = 'left_turn'
                 time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
 
@@ -134,16 +138,20 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
                     if is_back_camera:
                         print(f"[Initialize] 왼쪽으로 이동 ({camera_type} - 반대 명령)")
                         serial_server.write('5'.encode())  # 뒷카메라: 반대 명령
+                        recent_command = 'left'
                     else:
                         print(f"[Initialize] 오른쪽으로 이동 ({camera_type})")
                         serial_server.write('6'.encode())  # 전방카메라: 정상 명령
+                        recent_command = 'right'
                 else:
                     if is_back_camera:
                         print(f"[Initialize] 오른쪽으로 이동 ({camera_type} - 반대 명령)")
                         serial_server.write('6'.encode())  # 뒷카메라: 반대 명령
+                        recent_command = 'right'
                     else:
                         print(f"[Initialize] 왼쪽으로 이동 ({camera_type})")
                         serial_server.write('5'.encode())  # 전방카메라: 정상 명령
+                        recent_command = 'left'
                 time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 중앙이 맞을 때까지 반복
 
@@ -155,6 +163,14 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
         else:
             serial_server.write('9'.encode())  # 정지 명령
             print(f"[Initialize] 마커 {marker_index}를 찾지 못했습니다. ({camera_type})")
+
+            if recent_command == "left_turn":
+                serial_server.write('6'.encode())  # 오른쪽 이동
+                print(f"[Initialize] 최근 명령이 좌회전이므로 오른쪽으로 이동")
+            elif recent_command == "right_turn":
+                serial_server.write('5'.encode())  # 왼쪽 이동
+                print(f"[Initialize] 최근 명령이 우회전이므로 왼쪽으로 이동")
+
             marker_lost_count += 1
             if marker_lost_count > MAX_LOST_FRAMES:
                 print(f"[Initialize] 마커 {marker_index}를 {MAX_LOST_FRAMES} 프레임 이상 놓침 - 초기화 중단 ({camera_type})")
