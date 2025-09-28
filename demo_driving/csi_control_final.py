@@ -1169,13 +1169,13 @@ try:
                     serial_server.write(b"2")  # 후진 시작
                 
                 # 뒷카메라로 마커 3번 인식 (동적 거리 사용) with 중앙정렬
-                print(f"[Client] 동적 인식 거리 {dynamic_target_distance:.3f}m 사용")
+                print(f"[Client] 동적 인식 거리 {final_target_distance:.3f}m 사용")
                 if cap_back is not None:
                     driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers,
                                                             target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=dynamic_target_distance, serial_server=serial_server, opposite_camera=True)
+                                                            target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
                     print("[Client] 뒷카메라로 마커 3번 인식 완료 (중앙정렬)")
                 else:
                     # 뒷카메라가 없으면 에러 처리
