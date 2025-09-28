@@ -658,8 +658,8 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                         print(f"[Marker10 Alignment] 시리얼 서버 연결 상태: OK")
                         
                         # 현재 진행 방향 정지
-                        serial_server.write(direction_commands["stop"])
-                        time.sleep(0.1)
+                        #serial_server.write(direction_commands["stop"])
+                        #time.sleep(0.1)
                         
                         # 평행이동을 편차가 허용 오차 이내가 될 때까지 반복
                         slide_direction = None
@@ -752,9 +752,9 @@ def driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_mark
                             time.sleep(0.05)  # 프레임 처리 딜레이 (0.05 -> 0.1초)
                         
                         # 평행이동 정지
-                        print(f"[Marker10 Alignment] 평행이동 정지 명령 전송: {direction_commands['stop']}")
-                        serial_server.write(direction_commands["stop"])
-                        time.sleep(0.3)  # 정지 확실히 하기 (0.2 -> 0.3초)
+                        #print(f"[Marker10 Alignment] 평행이동 정지 명령 전송: {direction_commands['stop']}")
+                        #serial_server.write(direction_commands["stop"])
+                        #time.sleep(0.3)  # 정지 확실히 하기 (0.2 -> 0.3초)
                         
                         # 다시 원래 방향으로 진행
                         print(f"[Marker10 Alignment] 원래 방향 재시작: {actual_direction_command} -> {direction_commands[actual_direction_command]}")
