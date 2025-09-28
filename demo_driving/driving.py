@@ -86,7 +86,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
     # 마커 위치 추적 변수
     last_marker_position = None  # 마지막으로 본 마커 위치 (center_x, center_y)
     marker_lost_count = 0  # 마커를 놓친 프레임 수
-    MAX_LOST_FRAMES = 5  # 마커를 놓쳤을 때 최대 대기 프레임
+    MAX_LOST_FRAMES = 30  # 마커를 놓쳤을 때 최대 대기 프레임
 
     if is_back_camera:
         camera_type = "뒷카메라"
@@ -153,6 +153,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
             break
 
         else:
+            serial_server.write('9'.encode())  # 정지 명령
             print(f"[Initialize] 마커 {marker_index}를 찾지 못했습니다. ({camera_type})")
             marker_lost_count += 1
             if marker_lost_count > MAX_LOST_FRAMES:
