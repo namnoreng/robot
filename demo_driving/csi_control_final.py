@@ -508,7 +508,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                     else:
@@ -527,7 +527,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                     else:
@@ -573,7 +573,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                     else:
@@ -592,7 +592,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                     else:
@@ -732,7 +732,7 @@ try:
                                 break
                         time.sleep(0.1)
                         timeout_count += 1
-                        if timeout_count > 100:  # 10초 타임아웃
+                        if timeout_count > 200:  # 20초 타임아웃
                             print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                             break
                     time.sleep(0.5)
@@ -786,7 +786,7 @@ try:
                                 break
                         time.sleep(0.1)
                         timeout_count += 1
-                        if timeout_count > 100:  # 10초 타임아웃
+                        if timeout_count > 200:  # 20초 타임아웃
                             print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                             break
                     time.sleep(0.5)
@@ -930,7 +930,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                 elif side == "right":
@@ -947,7 +947,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                 print("sector 회전 완료")
@@ -984,7 +984,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                 elif direction == "right":
@@ -1001,7 +1001,7 @@ try:
                                     break
                             time.sleep(0.1)
                             timeout_count += 1
-                            if timeout_count > 100:  # 10초 타임아웃
+                            if timeout_count > 200:  # 20초 타임아웃
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                 print("subzone 회전 완료")
@@ -1103,7 +1103,7 @@ try:
                                 break
                         time.sleep(0.1)
                         timeout_count += 1
-                        if timeout_count > 100:  # 10초 타임아웃
+                        if timeout_count > 200:  # 20초 타임아웃
                             print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                             break
                     time.sleep(0.5)
@@ -1149,7 +1149,7 @@ try:
                                 break
                         time.sleep(0.1)
                         timeout_count += 1
-                        if timeout_count > 100:  # 10초 타임아웃
+                        if timeout_count > 200:  # 20초 타임아웃
                             print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                             break
                     time.sleep(0.5)
