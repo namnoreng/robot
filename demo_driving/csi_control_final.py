@@ -491,7 +491,7 @@ try:
                     serial_server.write(b"9")
                 time.sleep(0.5)
 
-                driving.initialize_robot(cap_front, marker_dict, param_markers, 1, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
+                driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=sector, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=False)
 
                 # 방향에 따라 회전
                 if side == "left":
@@ -912,6 +912,7 @@ try:
                                                         target_distance=final_target_distance, serial_server=serial_server)
                 if serial_server is not None:
                     serial_server.write(b"9")
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=sector, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=False)
                 time.sleep(0.5)
 
                 # 방향에 따라 회전
@@ -965,6 +966,7 @@ try:
                                                         target_distance=final_target_distance, serial_server=serial_server)
                 if serial_server is not None:
                     serial_server.write(b"9")
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=False)
                 time.sleep(0.5)
 
                 # 방향에 따라 회전
@@ -1079,6 +1081,7 @@ try:
                                                         target_distance=final_target_distance-MARKER2_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
                 if serial_server is not None:
                     serial_server.write(b"9")
+                    driving.initialize_robot(cap_back, marker_dict, param_markers, 2, serial_server, camera_back_matrix, dist_back_coeffs, is_back_camera=True)
                     time.sleep(0.5)
                 
                 # 돌아갈 방향으로 회전
@@ -1124,6 +1127,7 @@ try:
                     continue
                 if serial_server is not None:
                     serial_server.write(b"9")
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=0, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                     time.sleep(0.5)
                 
                 # 첫 번째 회전 방향과 반대로 회전
@@ -1169,6 +1173,7 @@ try:
                     continue
                 if serial_server is not None:
                     serial_server.write(b"9")
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=0, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
 
                 # 간단한 후진 제어: 마커 3번 인식까지 후진 (중앙정렬)
                 print("[Client] 마커 3번 인식까지 후진 시작... (마커10 중앙정렬)")
