@@ -491,6 +491,8 @@ try:
                     serial_server.write(b"9")
                 time.sleep(0.5)
 
+                driving.initialize_robot(cap_front, marker_dict, param_markers, 1, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
+
                 # 방향에 따라 회전
                 if side == "left":
                     if serial_server is not None:
@@ -554,7 +556,7 @@ try:
                 time.sleep(0.5)
 
                 # subzone 도착 후 로봇 초기화
-                # driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
 
                 # 방향에 따라 회전
                 if direction == "left":
@@ -630,7 +632,7 @@ try:
                 
                 time.sleep(1)  # 안정화 대기
 
-                driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=1, serial_server=serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
+                driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=1, serial_server=serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, is_back_camera=True)
                 
                 # 주차공간 도착 후 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
@@ -708,6 +710,7 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                     time.sleep(0.5)
+                    driving.initialize_robot(cap_back, marker_dict, param_markers, 2, serial_server, camera_back_matrix, dist_back_coeffs, is_back_camera=True)
                 
                 # 2. 돌아갈 방향으로 회전 (주차할 때와 반대)
                 print("[Client] 복귀를 위한 회전...")
@@ -761,6 +764,7 @@ try:
                     serial_server.write(b"9")  # 정지
                     client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode()) # sector 도착
                     time.sleep(0.5)
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
                 
                 # 4. 첫 번째 회전 방향과 반대로 회전
                 print("[Client] 첫 번째 마커 방향으로 회전...")
