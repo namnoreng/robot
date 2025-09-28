@@ -601,6 +601,7 @@ try:
                 driving.flush_camera(cap_front, 5)  # 카메라 플러시
                 time.sleep(1)
                 if serial_server is not None:
+                    driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=2, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=True)
                     serial_server.write(b"9")
                 
                 # 간단한 후진 제어: 마커 1번 인식까지 후진 (중앙정렬)
@@ -1009,6 +1010,7 @@ try:
                 time.sleep(0.5)
                 if serial_server is not None:
                     serial_server.write(b"9")
+                    driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=2, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=True)
 
                 # 3. 차량 들어올리기 (7번 명령으로 진입)
                 print("[Client] 차량 들어올리기 시작...")
