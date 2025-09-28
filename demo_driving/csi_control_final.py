@@ -629,6 +629,8 @@ try:
                 print("[Client] 마커 1번까지 후진 완료")
                 
                 time.sleep(1)  # 안정화 대기
+
+                driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=1, serial_server=serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs)
                 
                 # 주차공간 도착 후 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
@@ -1190,6 +1192,8 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                 print("[Client] 마커 3번까지 후진 완료")
+
+                driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=3, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 
                 # 6. 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
