@@ -204,7 +204,7 @@ def driving(cap, aruco_dict, parameters, marker_index, camera_matrix, dist_coeff
 
 def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, dist_coeffs, marker_length):
     """
-    개선된 ArUco 마커 거리 계산 (csi_5x5_aruco 정확도 적용)
+    개선된 ArUco 마커 거리 계산 (csi_5x5_aruco 방식 적용)
     
     Args:
         frame: 입력 이미지 (BGR)
@@ -224,18 +224,14 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
     
     try:
         # csi_5x5_aruco 방식: 왜곡 보정 먼저 적용
-        if camera_matrix is not None and dist_coeffs is not None:
-            frame_undistorted = cv2.undistort(frame, camera_matrix, dist_coeffs)
-        else:
-            frame_undistorted = frame
-        
+        frame_undistorted = cv2.undistort(frame, camera_matrix, dist_coeffs)
         gray = cv2.cvtColor(frame_undistorted, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
 
         if ids is not None:
             for i in range(len(ids)):
                 if ids[i][0] == marker_index:
-                    # 포즈 추정 (OpenCV 버전 호환성 처리)
+                    # csi_5x5_aruco 방식: 포즈 추정 (OpenCV 버전 호환성 처리)
                     cv_version = cv2.__version__.split(".")
                     if int(cv_version[0]) == 3 and int(cv_version[1]) <= 2:
                         # OpenCV 3.2.x 이하
@@ -248,10 +244,10 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
                             np.array([corners[i]]), marker_length, camera_matrix, dist_coeffs
                         )
                     
-                    # csi_5x5_aruco 방식과 동일: 3D 벡터 크기로 거리 계산
+                    # csi_5x5_aruco 방식: 3D 벡터 크기로 거리 계산
                     distance = np.linalg.norm(tvecs[0][0])
 
-                    # 회전 행렬 및 각도
+                    # csi_5x5_aruco 방식: 회전 행렬 및 각도 계산
                     rotation_matrix, _ = cv2.Rodrigues(rvecs[0][0])
                     sy = np.sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
                     singular = sy < 1e-6
@@ -265,18 +261,19 @@ def find_aruco_info(frame, aruco_dict, parameters, marker_index, camera_matrix, 
                         y_angle = np.arctan2(-rotation_matrix[2, 0], sy)
                         z_angle = 0
 
+                    # 각도를 도(degree)로 변환
                     x_angle = np.degrees(x_angle)
                     y_angle = np.degrees(y_angle)
                     z_angle = np.degrees(z_angle)
 
-                    # 중심점 좌표 계산 (왜곡 보정된 이미지 기준)
+                    # csi_5x5_aruco 방식: 중심점 좌표 계산 (왜곡 보정된 이미지 기준)
                     c = corners[i].reshape(4, 2)
                     center_x = int(np.mean(c[:, 0]))
                     center_y = int(np.mean(c[:, 1]))
 
                     # csi_5x5_aruco 방식: 터미널 출력 (cm 단위)
                     distance_cm = distance * 100
-                    print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}, Center: ({center_x}, {center_y})")
+                    print(f"[ID{marker_index}] Distance: {distance_cm:.1f}cm, Z-Angle: {z_angle:.1f}°, Center: ({center_x}, {center_y})")
 
                     return distance, (x_angle, y_angle, z_angle), (center_x, center_y)
         
@@ -923,7 +920,7 @@ def command7_backward_with_sensor_control(
                             gray_slide = cv2.cvtColor(undistorted_frame_slide, cv2.COLOR_BGR2GRAY)
                             
                             # ArUco 마커 검출
-                            corners_slide, ids_slide, _ = cv2.aruco.detectMarkers(gray_slide, marker_dict, parameters=param_markers)
+                            corners_slide, ids_slide, _ = aruco.detectMarkers(gray_slide, marker_dict, parameters=param_markers)
                             
                             # 마커 재확인
                             if ids_slide is not None:
