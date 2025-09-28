@@ -752,7 +752,7 @@ try:
                                                         target_marker_id=0, direction="backward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                        target_distance=final_target_distance + MARKER0_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
+                                                        target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
                 else:
                     print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
                     print("❌ [ERROR] 후진 복귀 동작을 수행할 수 없습니다.")
@@ -801,7 +801,7 @@ try:
                                                             target_marker_id=0, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance + MARKER0_ARUCO_DISTANCE, serial_server=serial_server, opposite_camera=True)
+                                                            target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
                 else:
                     print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
                     print("❌ [ERROR] 초기 위치 복귀를 위한 후진 동작을 수행할 수 없습니다.")
