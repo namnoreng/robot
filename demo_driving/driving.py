@@ -877,8 +877,8 @@ def command7_backward_with_sensor_control(
 
                     current_time = time.time()
                     if abs(deviation_x) > alignment_tolerance and current_time - last_alignment_time > alignment_interval:
-                        serial_server.write(direction_commands["stop"])
-                        time.sleep(0.1)
+                        #serial_server.write(direction_commands["stop"])
+                        #time.sleep(0.1)
                         # 카메라 방향에 따라 평행이동 방향 결정
                         if camera_direction == "front":
                             # 앞 카메라 기준: deviation_x > 0 → 오른쪽 이동, < 0 → 왼쪽 이동
@@ -954,9 +954,9 @@ def command7_backward_with_sensor_control(
                             time.sleep(0.1)  # 프레임 처리 딜레이
                         
                         # 평행이동 완료 후 즉시 정지
-                        print(f"[Command7 Backward] 평행이동 완료 - 정지 명령 전송")
-                        serial_server.write(direction_commands["stop"])
-                        time.sleep(0.2)  # 정지 확실히 하기
+                        #print(f"[Command7 Backward] 평행이동 완료 - 정지 명령 전송")
+                        #serial_server.write(direction_commands["stop"])
+                        #time.sleep(0.2)  # 정지 확실히 하기
                         
                         last_alignment_time = current_time
                         serial_server.write(direction_commands["command_7"])
