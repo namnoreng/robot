@@ -421,7 +421,7 @@ try:
                             else : 
                                 # 계속 대기
                                 continue
-                            
+
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
@@ -639,7 +639,14 @@ try:
                     else:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("subzone 회전 완료")
-                driving.flush_camera(cap_front, 5)  # 카메라 플러시
+
+                if direction == "left":
+                    serial_server.write(b"x") # 로봇 수직 맞추기 - 왼쪽
+                elif direction == "right":
+                    serial_server.write(b"c") # 로봇 수직 맞추기 - 오른쪽
+                time.sleep(3)  # 수직 맞추기 대기
+
+                driving.flush_camera(cap_front, 5)  # 카메라 플러시 - 오른쪽
                 time.sleep(1)
                 if serial_server is not None:
                     #driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=2, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=True)
@@ -1053,6 +1060,13 @@ try:
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                 print("subzone 회전 완료")
+
+                if direction == "left":
+                    serial_server.write(b"x") # 로봇 수직 맞추기 - 왼쪽
+                elif direction == "right":
+                    serial_server.write(b"c") # 로봇 수직 맞추기 - 오른쪽
+                time.sleep(3)  # 수직 맞추기 대기
+
                 driving.flush_camera(cap_front, 5)
                 time.sleep(0.5)
                 if serial_server is not None:
