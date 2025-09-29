@@ -1250,7 +1250,7 @@ try:
                                                             target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
+                                                            target_distance=0.0, serial_server=serial_server, opposite_camera=True)
                     print("[Client] 뒷카메라로 마커 3번 인식 완료 (중앙정렬)")
                 else:
                     # 뒷카메라가 없으면 에러 처리
