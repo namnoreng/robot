@@ -427,6 +427,7 @@ try:
                             # 최종 간격 데이터를 바탕으로 복귀 시 사용할 거리 계산
                             final_target_distance = calculate_aruco_target_distance(dynamic_target_distance)
                             print(f"[Client] 복귀용 동적 ArUco 인식 거리: {final_target_distance:.3f}m")
+                            break
                         else:
                             print("[Client] 최종 차량 간격 데이터 수신 실패 - 기본 거리 사용")
                             final_target_distance = DEFAULT_ARUCO_DISTANCE  # 기본값
