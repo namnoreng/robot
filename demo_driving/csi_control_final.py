@@ -361,6 +361,9 @@ else:
     param_markers.minCornerDistanceRate = 0.05
 
 print("=== 카메라 및 ArUco 초기화 완료 ===")
+if serial_server is not None:
+    serial_server.write(b"z")  # 회전 초기화 값 설정
+    print("Serial command 'z' sent to initialize rotation.")
 
 final_target_distance = DEFAULT_ARUCO_DISTANCE  # 최종 목표 거리 초기화
 
@@ -627,6 +630,13 @@ try:
                 driving.flush_camera(cap_front, 5)  # 카메라 플러시
                 time.sleep(1)
                 if serial_server is not None:
+                    if direction == "left":
+                        serial_server.write(b"x")
+                        
+                    elif direction == "right":
+                        serial_server.write(b"c")
+                        
+                    time.sleep(3) # 3초 대기
                     #driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=2, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=True)
                     serial_server.write(b"9")
                 
@@ -644,6 +654,12 @@ try:
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=0.15, serial_server=serial_server)
                     print("[Client] 뒷카메라로 마커 1번 인식 완료 (중앙정렬)")
+                    if serial_server is not None:
+                        if direction == "left":
+                            serial_server.write(b"x")
+                        elif direction == "right":
+                            serial_server.write(b"c")
+                        time.sleep(3) # 3초 대기
                 else:
                     # 뒷카메라가 없으면 에러 처리
                     print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
@@ -659,7 +675,7 @@ try:
                 
                 time.sleep(1)  # 안정화 대기
 
-                # driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=1, serial_server=serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, is_back_camera=True)
+                driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=1, serial_server=serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, is_back_camera=True)
                 
                 # 주차공간 도착 후 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
@@ -843,6 +859,8 @@ try:
                 # 6. 최종 위치 조정 (동작 확인 후 수정 필요)
                 print("[Client] 최종 대기 위치로 이동...(동작 확인 필요하여 일단 제외)")
                 if serial_server is not None:
+                     serial_server.write(b"x")  # 위치 초기화
+                     time.sleep(3) # 3초 대기
                      driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
                 
 
@@ -1043,7 +1061,12 @@ try:
                 time.sleep(0.5)
                 if serial_server is not None:
                     serial_server.write(b"9")
-                    # driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=2, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=True)
+                    if direction == "left":
+                        serial_server.write(b"x")
+                    elif direction == "right":
+                        serial_server.write(b"c")
+                    time.sleep(3) # 3초 대기
+                    driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=2, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=True)
 
                 # 3. 차량 들어올리기 (7번 명령으로 진입)
                 print("[Client] 차량 들어올리기 시작...")
@@ -1243,6 +1266,9 @@ try:
                 print("[Client] 마커 3번까지 후진 완료")
 
                 driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=3, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                serial_server.write(b"x")  # 위치 초기화
+                time.sleep(3) # 3초 대기
+                driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=3, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 
                 # 6. 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
@@ -1310,7 +1336,9 @@ try:
                 print("[Client] 로봇 초기 위치 정밀 정렬...")
                 if serial_server is not None:
                     driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
-                
+                    serial_server.write(b"x")  # 위치 초기화
+                    time.sleep(3) # 3초 대기
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
                 print(f"[Client] 출차 완료: {car_number}")
                 
                 # 대기 위치 복귀 완료 신호를 서버에 전송
