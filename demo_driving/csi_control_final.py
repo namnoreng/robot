@@ -526,7 +526,7 @@ try:
                                                         target_marker_id=sector, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                        target_distance=final_target_distance, serial_server=serial_server)
+                                                        target_distance=0.15, serial_server=serial_server)
                 
                 # 마커 인식 후 정지
                 client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
