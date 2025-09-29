@@ -1090,7 +1090,7 @@ try:
                     # 시리얼 버퍼 클리어
                     serial_server.reset_input_buffer()
                     serial_server.reset_output_buffer()
-                    
+
                     print("[Client] 시스템 안정화 완료, 복귀 시작")
 
                 # 4. (차량 대기 위치)로 복귀 (입차와 동일한 복귀 로직)
@@ -1111,6 +1111,10 @@ try:
                     serial_server.write(b"9")
                     driving.initialize_robot(cap_back, marker_dict, param_markers, 2, serial_server, camera_back_matrix, dist_back_coeffs, is_back_camera=True)
                     time.sleep(0.5)
+                
+                # 탈출 성공 신호를 서버에 전송
+                print("[Client] 탈출 성공 신호 전송")
+                client_socket.sendall(f"OUT_DONE,{sector},{side},{subzone},{direction},{car_number}\n".encode())
                 
                 # 돌아갈 방향으로 회전
                 print("[Client] 복귀를 위한 회전...")
