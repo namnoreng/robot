@@ -81,7 +81,7 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
     FRAME_CENTER_X = 320   # 640 x 480 해상도 기준
     FRAME_CENTER_Y = 240
     CENTER_TOLERANCE = 25  # 중앙 허용 오차 (픽셀)
-    ANGLE_TOLERANCE = 1    # 각도 허용 오차 (도)
+    ANGLE_TOLERANCE = 2    # 각도 허용 오차 (도)
     recent_command = None
     
     # 마커 위치 추적 변수
