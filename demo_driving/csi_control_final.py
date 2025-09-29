@@ -364,11 +364,6 @@ print("=== 카메라 및 ArUco 초기화 완료 ===")
 
 final_target_distance = DEFAULT_ARUCO_DISTANCE  # 최종 목표 거리 초기화
 
-# 시작 각도 저장용 신호 전송
-if serial_server is not None:
-    serial_server.write(b"z")
-    print("[Client] 시작 각도 저장용 'z' 신호 전송")
-
 # 클라이언트 소켓 초기화 (서버에 접속)
 host_input = input("Enter server IP (default: 127.0.0.1): ").strip()
 port_input = input("Enter server port (default: 12345): ").strip()
@@ -412,18 +407,6 @@ try:
                     print("[Client] 7번 중앙정렬 후진 실패 - 기본 7번 명령으로 대체")
                         # 실패 시 기본 7번 명령 실행
                     serial_server.write(b"7")
-
-                    while True:
-                        if serial_server.in_waiting:
-                            recv = serial_server.read().decode()
-                            print(f"[Client] 시리얼 수신: '{recv}'")
-                            if recv == "l":
-                                print("[Client] 차량 바퀴 인식 완료!")
-                                break
-                            else : 
-                                # 계속 대기
-                                continue
-
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
@@ -526,7 +509,7 @@ try:
                                                         target_marker_id=sector, direction="forward", 
                                                         camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                         camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                        target_distance=0.15, serial_server=serial_server)
+                                                        target_distance=final_target_distance, serial_server=serial_server)
                 
                 # 마커 인식 후 정지
                 client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
@@ -641,14 +624,7 @@ try:
                     else:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 print("subzone 회전 완료")
-
-                if direction == "left":
-                    serial_server.write(b"x") # 로봇 수직 맞추기 - 왼쪽
-                elif direction == "right":
-                    serial_server.write(b"c") # 로봇 수직 맞추기 - 오른쪽
-                time.sleep(3)  # 수직 맞추기 대기
-
-                driving.flush_camera(cap_front, 5)  # 카메라 플러시 - 오른쪽
+                driving.flush_camera(cap_front, 5)  # 카메라 플러시
                 time.sleep(1)
                 if serial_server is not None:
                     #driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=2, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=True)
@@ -680,17 +656,10 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")  # 정지
                 print("[Client] 마커 1번까지 후진 완료")
-
                 
                 time.sleep(1)  # 안정화 대기
-                if serial_server is not None:
-                    if direction == "left":
-                        serial_server.write(b"x")
-                    elif direction == "right":
-                        serial_server.write(b"c")
-                time.sleep(3)  # 수직 맞추기 대기
 
-                driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=1, serial_server=serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, is_back_camera=True)
+                # driving.initialize_robot(cap_back, marker_dict, param_markers, marker_index=1, serial_server=serial_server, camera_matrix=camera_back_matrix, dist_coeffs=dist_back_coeffs, is_back_camera=True)
                 
                 # 주차공간 도착 후 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
@@ -878,12 +847,6 @@ try:
                 
 
                 print("[Client] 제자리 복귀 완료!")
-
-                # 시작 각도로 조정하는 신호 전송
-                serial_server.write(b"x")
-                time.sleep(3)  # 수직 맞추기 대기   
-                if serial_server is not None:
-                    driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
                 
                 # 대기 위치 복귀 완료 신호를 서버에 전송
                 client_socket.sendall(f"COMPLETE\n".encode())
@@ -961,7 +924,7 @@ try:
                     print(f"[Client] OUT 명령 형식 오류: {command}")
                     client_socket.sendall(b"ERROR: Invalid OUT command format\n")
                     continue
-
+                
                 # 2. 차량 위치로 이동 (입차와 동일한 경로)
                 print(f"[Client] 차량 위치로 이동 시작: {sector}, {side}, {subzone}, {direction}")
                 
@@ -1069,13 +1032,6 @@ try:
                                 print("[Client] 회전 완료 신호 타임아웃 - 강제 진행")
                                 break
                 print("subzone 회전 완료")
-
-                if direction == "left":
-                    serial_server.write(b"x") # 로봇 수직 맞추기 - 왼쪽
-                elif direction == "right":
-                    serial_server.write(b"c") # 로봇 수직 맞추기 - 오른쪽
-                time.sleep(3)  # 수직 맞추기 대기
-
                 driving.flush_camera(cap_front, 5)
                 time.sleep(0.5)
                 if serial_server is not None:
@@ -1263,7 +1219,7 @@ try:
                                                             target_marker_id=3, direction="backward", 
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
-                                                            target_distance=0.0, serial_server=serial_server, opposite_camera=True)
+                                                            target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
                     print("[Client] 뒷카메라로 마커 3번 인식 완료 (중앙정렬)")
                 else:
                     # 뒷카메라가 없으면 에러 처리
@@ -1278,10 +1234,7 @@ try:
                     serial_server.write(b"9")  # 정지
                 print("[Client] 마커 3번까지 후진 완료")
 
-                if serial_server is not None:
-                    serial_server.write(b"x") # 로봇 수직 맞추기
-                    time.sleep(3)  # 수직 맞추기 대기
-                    driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=3, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
+                driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=3, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs)
                 
                 # 6. 차량 내려놓기
                 print("[Client] 차량 내려놓기 시작...")
@@ -1352,12 +1305,6 @@ try:
                 
                 print(f"[Client] 출차 완료: {car_number}")
                 
-                # 현재 각도 보정용 신호 전송
-                serial_server.write(b"x")
-                time.sleep(3)  # 수직 맞추기 대기
-                if serial_server is not None:
-                    driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
-
                 # 대기 위치 복귀 완료 신호를 서버에 전송
                 client_socket.sendall(f"COMPLETE\n".encode())
                 

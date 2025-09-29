@@ -101,6 +101,9 @@ def handle_robot_message(msg, clients, app_clients, save_parking_status, export_
     if msg.startswith("DONE"):
         try:
             _, sector, side, subzone, direction, car_number = msg.split(",")
+            # 문자열을 정수로 변환 (Android format 변환용)
+            sector_int = int(sector)
+            subzone_int = int(subzone)
             android_format = find_destination.convert_to_android_format_full(sector, side, subzone, direction)
             # parked 메시지 앱에 전송
             if 1 in app_clients:
@@ -114,6 +117,9 @@ def handle_robot_message(msg, clients, app_clients, save_parking_status, export_
         try:
             # 출차 완료: OUT_DONE,1,left,1,left,1111
             _, sector, side, subzone, direction, car_number = msg.split(",")
+            # 문자열을 정수로 변환
+            sector = int(sector)
+            subzone = int(subzone)
             # 실제로 자리 비우기 (로봇이 출차 완료했으므로)
             find_destination.park_car_at(find_destination.parking_lot, sector, side, subzone, direction, "")
             print(f"[서버] 차량 {car_number}를 {sector},{side},{subzone},{direction}에서 출차 완료")
