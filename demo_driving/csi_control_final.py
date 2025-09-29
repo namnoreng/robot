@@ -940,6 +940,9 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")
                     driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=sector, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=False)
+                
+                # sector 도착 신호 전송
+                client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
                 time.sleep(0.5)
 
                 # 방향에 따라 회전
@@ -994,6 +997,10 @@ try:
                 if serial_server is not None:
                     serial_server.write(b"9")
                     driving.initialize_robot(cap_front, marker_dict, param_markers, marker_index=subzone, serial_server=serial_server, camera_matrix=camera_front_matrix, dist_coeffs=dist_front_coeffs, is_back_camera=False)
+                
+                # subzone 도착 신호 전송
+                print("[Client] subzone 도착 신호 전송")
+                client_socket.sendall(f"subzone_arrived,{sector},{side},{subzone}\n".encode())
                 time.sleep(0.5)
 
                 # 방향에 따라 회전
@@ -1196,6 +1203,7 @@ try:
                                                             camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
                                                             camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
                                                             target_distance=final_target_distance, serial_server=serial_server, opposite_camera=True)
+                    client_socket.sendall(f"sector_arrived,{sector},None,None\n".encode())
                 else:
                     print("❌ [ERROR] 뒷카메라가 연결되지 않았습니다!")
                     print("❌ [ERROR] 후진 복귀 동작을 수행할 수 없습니다.")
