@@ -410,6 +410,18 @@ try:
                     print("[Client] 7번 중앙정렬 후진 실패 - 기본 7번 명령으로 대체")
                         # 실패 시 기본 7번 명령 실행
                     serial_server.write(b"7")
+
+                    while True:
+                        if serial_server.in_waiting:
+                            recv = serial_server.read().decode()
+                            print(f"[Client] 시리얼 수신: '{recv}'")
+                            if recv == "l":
+                                print("[Client] 차량 바퀴 인식 완료!")
+                                break
+                            else : 
+                                # 계속 대기
+                                continue
+                            
                     while True:
                         if serial_server.in_waiting:
                             recv = serial_server.read().decode()
