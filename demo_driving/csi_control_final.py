@@ -398,6 +398,9 @@ try:
                 # 예시: auto driving 모드처럼 직접 명령 조합
                 print(f"[Client] 목적지: {sector}, {side}, {subzone}, {direction}, {car_number}")
 
+                # 시작 각도 저장용 신호 전송
+                serial_server.write(b"z")
+
                 # 입차 시작: 차량 들어올리기 동작 (첫코드 시작부분)
                 print("[Client] 차량 들어올리기 시작...")
                 if serial_server is not None:
@@ -847,6 +850,9 @@ try:
                 
 
                 print("[Client] 제자리 복귀 완료!")
+
+                # 시작 각도로 조정하는 신호 전송
+                serial_server.write(b"x")
                 
                 # 대기 위치 복귀 완료 신호를 서버에 전송
                 client_socket.sendall(f"COMPLETE\n".encode())
@@ -925,6 +931,9 @@ try:
                     client_socket.sendall(b"ERROR: Invalid OUT command format\n")
                     continue
                 
+                # 현재 각도 저장용 신호 전송
+                serial_server.write(b"z")
+
                 # 2. 차량 위치로 이동 (입차와 동일한 경로)
                 print(f"[Client] 차량 위치로 이동 시작: {sector}, {side}, {subzone}, {direction}")
                 
@@ -1305,6 +1314,9 @@ try:
                 
                 print(f"[Client] 출차 완료: {car_number}")
                 
+                # 현재 각도 보정용 신호 전송
+                serial_server.write(b"x")
+
                 # 대기 위치 복귀 완료 신호를 서버에 전송
                 client_socket.sendall(f"COMPLETE\n".encode())
                 
