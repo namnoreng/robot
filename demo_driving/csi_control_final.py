@@ -364,6 +364,11 @@ print("=== 카메라 및 ArUco 초기화 완료 ===")
 
 final_target_distance = DEFAULT_ARUCO_DISTANCE  # 최종 목표 거리 초기화
 
+# 시작 각도 저장용 신호 전송
+if serial_server is not None:
+    serial_server.write(b"z")
+    print("[Client] 시작 각도 저장용 'z' 신호 전송")
+
 # 클라이언트 소켓 초기화 (서버에 접속)
 host_input = input("Enter server IP (default: 127.0.0.1): ").strip()
 port_input = input("Enter server port (default: 12345): ").strip()
@@ -397,9 +402,6 @@ try:
                 # 목적지 정보(sector, side, subzone, direction)를 활용해서 직접 주행 로직 작성
                 # 예시: auto driving 모드처럼 직접 명령 조합
                 print(f"[Client] 목적지: {sector}, {side}, {subzone}, {direction}, {car_number}")
-
-                # 시작 각도 저장용 신호 전송
-                serial_server.write(b"z")
 
                 # 입차 시작: 차량 들어올리기 동작 (첫코드 시작부분)
                 print("[Client] 차량 들어올리기 시작...")
@@ -959,9 +961,6 @@ try:
                     print(f"[Client] OUT 명령 형식 오류: {command}")
                     client_socket.sendall(b"ERROR: Invalid OUT command format\n")
                     continue
-                
-                # 현재 각도 저장용 신호 전송
-                serial_server.write(b"z")
 
                 # 2. 차량 위치로 이동 (입차와 동일한 경로)
                 print(f"[Client] 차량 위치로 이동 시작: {sector}, {side}, {subzone}, {direction}")
