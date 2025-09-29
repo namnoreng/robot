@@ -142,20 +142,20 @@ def initialize_robot(cap, aruco_dict, parameters, marker_index, serial_server, c
                 time.sleep(0.1)  # 명령 간 딜레이
                 continue  # 중앙이 맞을 때까지 반복
 
-            # 2. 회전값 맞추기
-            if abs(angle_error) > ANGLE_TOLERANCE:
-                if angle_error > 0:
-                    print(f"[Initialize] 우회전 ({camera_type})")
-                    serial_server.write('4'.encode())
-                    recent_command = 'right_turn'
-                else:
-                    print(f"[Initialize] 좌회전 ({camera_type})")
-                    serial_server.write('3'.encode())
-                    recent_command = 'left_turn'
-                continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
+            # # 2. 회전값 맞추기
+            # if abs(angle_error) > ANGLE_TOLERANCE:
+            #     if angle_error > 0:
+            #         print(f"[Initialize] 우회전 ({camera_type})")
+            #         serial_server.write('4'.encode())
+            #         recent_command = 'right_turn'
+            #     else:
+            #         print(f"[Initialize] 좌회전 ({camera_type})")
+            #         serial_server.write('3'.encode())
+            #         recent_command = 'left_turn'
+            #     continue  # 회전이 맞을 때까지 중앙값 동작으로 넘어가지 않음
 
             # 3. 둘 다 맞으면 정지
-            print(f"[Initialize] 초기화 완료: 중앙+수직 ({camera_type})")
+            print(f"[Initialize] 초기화 완료: 중앙 ({camera_type})")
             serial_server.write('9'.encode())  # 정지 명령
             break
 
