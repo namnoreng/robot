@@ -609,6 +609,13 @@ try:
                         print("[Client] 시리얼 통신이 연결되지 않았습니다.")
                 elif direction == "right":
                     if serial_server is not None:
+
+                        driving.driving_with_marker10_alignment(cap_front, cap_back, marker_dict, param_markers, 
+                                                        target_marker_id=(20 - sector), direction="forward", 
+                                                        camera_front_matrix=camera_front_matrix, dist_front_coeffs=dist_front_coeffs,
+                                                        camera_back_matrix=camera_back_matrix, dist_back_coeffs=dist_back_coeffs,
+                                                        target_distance=final_target_distance, serial_server=serial_server)
+                        
                         # 시리얼 버퍼 클리어
                         serial_server.reset_input_buffer()
                         serial_server.write(b"3")
