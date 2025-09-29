@@ -185,7 +185,7 @@ def calculate_aruco_target_distance(measured_gap_mm):
     print(f"[거리 계산] 측정 거리: {measured_gap_mm}mm")
     print(f"[거리 계산] 오프셋: {OFFSET_MM}mm")
     print(f"[거리 계산] 목표 거리: {target_distance_mm}mm ({target_distance_m:.3f}m)")
-    print(f"[거리 계산] 계산식: {measured_gap_mm}mm - {OFFSET_MM}mm = {target_distance_mm}mm")
+    print(f"[거리 계산] 계산식: 150 - ({measured_gap_mm}mm - {OFFSET_MM}mm) = {target_distance_mm}mm")
     
     return target_distance_m
 
