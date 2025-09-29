@@ -872,6 +872,9 @@ try:
 
                 # 시작 각도로 조정하는 신호 전송
                 serial_server.write(b"x")
+                time.sleep(3)  # 수직 맞추기 대기   
+                if serial_server is not None:
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
                 
                 # 대기 위치 복귀 완료 신호를 서버에 전송
                 client_socket.sendall(f"COMPLETE\n".encode())
@@ -1342,6 +1345,9 @@ try:
                 
                 # 현재 각도 보정용 신호 전송
                 serial_server.write(b"x")
+                time.sleep(3)  # 수직 맞추기 대기
+                if serial_server is not None:
+                    driving.initialize_robot(cap_front, marker_dict, param_markers, 0, serial_server, camera_front_matrix, dist_front_coeffs, is_back_camera=False)
 
                 # 대기 위치 복귀 완료 신호를 서버에 전송
                 client_socket.sendall(f"COMPLETE\n".encode())
